@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">MyPlayer</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="notification_channel_name">Player controls</string>
+
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="stop">Stop</string>
+
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+
+    <string name="home_screen">Home Screen</string>
+    <string name="zero_seconds">0:00</string>
+
+    <string name="on_permission_denied">Need permission to get files from the storage</string>
+</resources>
