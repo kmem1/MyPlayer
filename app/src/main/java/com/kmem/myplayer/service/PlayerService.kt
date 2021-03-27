@@ -399,11 +399,8 @@ class PlayerService : Service() {
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            Log.d("first", playWhenReady.toString())
-            Log.d("second", (playbackState == ExoPlayer.STATE_ENDED).toString())
             if (playWhenReady && playbackState == ExoPlayer.STATE_ENDED) {
                 mediaSessionCallback.onSkipToNext()
-                Log.d("end", "end of track")
             }
         }
 

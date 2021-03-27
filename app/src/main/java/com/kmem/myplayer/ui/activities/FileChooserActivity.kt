@@ -7,12 +7,17 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.ui.adapters.FileChooserAdapter
 import com.kmem.myplayer.R
+import com.kmem.myplayer.viewmodels.FileChooserViewModel
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.Serializable
@@ -24,13 +29,8 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
     }
 
     private val list by lazy {findViewById<RecyclerView>(R.id.fileList)}
-    private var currentPath : String? = ""
-    private var currentDirName : String? = ""
-    private var currentDirs : ArrayList<FileTreeComponent> = ArrayList<FileTreeComponent>()
-    private var currentTree : FileTreeComponent? = null
-
-    private var internalStoragePath : String = ""
-    private var sdCardPath : String = ""
+    private val currentDirs : ArrayList<FileTreeComponent> = ArrayList()
+    private lateinit var model : FileChooserViewModel
 
     private var scope = CoroutineScope(Dispatchers.Main + Job())
     private lateinit var loadingSpinner : ProgressBar
@@ -41,6 +41,12 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_file_chooser)
 
+        model = ViewModelProvider(this).get(FileChooserViewModel::class.java)
+
+        model.currentDirs.observe(this, currentDirsObserver)
+        model.currentDirName.observe(this, currentDirNameObserver)
+        model.currentPath.observe(this, currentPathObserver)
+
         loadingSpinner = findViewById<ProgressBar>(R.id.progress_bar)
         loadingSpinner.visibility = View.GONE
 
@@ -49,136 +55,53 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
         supportActionBar?.setDisplayShowTitleEnabled(false)
 
         val previousPathButton = findViewById<ImageButton>(R.id.prev_path_button)
-        previousPathButton.setOnClickListener { openPreviousDir() }
+        previousPathButton.setOnClickListener { scope.launch { model.openPreviousDir() } }
         val homeButton = findViewById<ImageButton>(R.id.home_button)
-        homeButton.setOnClickListener { setHomeDirs() }
+        homeButton.setOnClickListener { model.setHomeDirs() }
         val selectAllButton = findViewById<ImageButton>(R.id.select_all)
-        selectAllButton.setOnClickListener { selectAllCurrent() }
+        selectAllButton.setOnClickListener { model.selectAllCurrent() }
         val loadButton = findViewById<ImageButton>(R.id.load_files)
         loadButton.setOnClickListener {
-            loadFiles()
-            sendPaths()
+            sendPaths(model.loadFiles())
         }
 
         val adapter = FileChooserAdapter(currentDirs)
         adapter.setListener(this)
         list.layoutManager = LinearLayoutManager(this)
         list.adapter = adapter
-
-        if (savedInstanceState != null) {
-            currentTree = savedInstanceState.getSerializable("currentTree") as FileTreeComponent?
-            internalStoragePath = savedInstanceState.getString("internalStoragePath") ?: ""
-            sdCardPath = savedInstanceState.getString("sdCardPath") ?: ""
-            currentPath = savedInstanceState.getString("currentPath") ?: ""
-            openDir(currentTree)
-        } else {
-            setHomeDirs()
-        }
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putSerializable("currentTree", currentTree)
-        outState.putString("internalStoragePath", internalStoragePath)
-        outState.putString("sdCardPath", sdCardPath)
-        outState.putString("currentPath", currentPath)
-    }
+    private val currentDirsObserver = object : Observer<ArrayList<FileTreeComponent>> {
+        override fun onChanged(t: ArrayList<FileTreeComponent>?) {
+            if (t == null)
+                return
 
-    private fun setHomeDirs() {
-        val result = ArrayList<FileModel>()
-        val externalDirs = getExternalFilesDirs(null)
-
-        var internalPath = externalDirs[0].absolutePath
-        internalPath = internalPath.replaceFirst("/Android.+".toRegex(), "")
-        internalStoragePath = internalPath
-        val internalPathFile = File(internalPath)
-        val internalFileModel = FileModel("Internal memory", internalPathFile) // Custom name
-        result.add(internalFileModel)
-        if (externalDirs.size > 1) {
-            var sdPath = externalDirs[1].absolutePath
-            sdPath = sdPath.replaceFirst("/Android.+".toRegex(), "")
-            sdCardPath = sdPath
-            val sdPathFile = File(sdPath)
-            val sdFileModel = FileModel("SD Card", sdPathFile)
-            result.add(sdFileModel)
-        }
-
-        currentPath = ""
-
-        // first invoke
-        if (currentTree == null)
-            currentTree = DirectoryNode(null, null).apply {
-                this.childModels.addAll(result)
-                this.initialize()
-            }
-
-        while(currentTree?.parent != null)
-            currentTree = currentTree?.parent
-
-        currentDirs.clear()
-        currentDirs.addAll(currentTree?.childsList()!!)
-        list.adapter?.notifyDataSetChanged()
-        setupToolbarText()
-    }
-
-    private fun openDir(dir: FileTreeComponent?) {
-        if (dir == null)
-            return
-        // main tree hasn't parent
-        if (dir.parent == null) {
-            setHomeDirs()
-            return
-        }
-
-        currentDirs.clear()
-        list.adapter?.notifyDataSetChanged()
-        currentTree = dir
-        currentPath = dir.model?.file?.absolutePath
-        currentDirName = dir.model?.name
-        list.scrollToPosition(0)
-        setupToolbarText()
-        loadingSpinner.visibility = View.VISIBLE
-        scope.launch {
-                withContext(Dispatchers.IO) {
-                    dir.initialize()
-                }
-                currentDirs.addAll(dir.childsList()!!)
+            if (model.wasSelectedOneFile) {
+                currentDirs[model.positionSelected] = t[model.positionSelected]
+                list.adapter?.notifyItemChanged(model.positionSelected)
+            } else {
+                currentDirs.clear()
+                currentDirs.addAll(t)
                 list.adapter?.notifyDataSetChanged()
-                loadingSpinner.visibility = View.GONE
+            }
         }
     }
 
-    private fun selectFile(file : FileTreeComponent?, position: Int) {
-        file?.changeSelected(!file.isSelected)
-        list.adapter?.notifyItemChanged(position)
-    }
-
-    private fun setupToolbarText() {
-        val dirNameView = findViewById<TextView>(R.id.dir_name) as TextView
-        val pathView = findViewById<TextView>(R.id.dir_path) as TextView
-        if (currentPath == "")
+    private val currentDirNameObserver = Observer<String> { t ->
+        val dirNameView = findViewById<TextView>(R.id.dir_name)
+        if (t == "")
             dirNameView.text = resources.getString(R.string.home_screen)
         else
-            dirNameView.text = currentDirName
-        pathView.text = currentPath
+            dirNameView.text = t
     }
 
-    private fun openPreviousDir() {
-        val prevDir = currentTree?.parent
-        if (prevDir?.model == null)
-            setHomeDirs()
-        else
-            openDir(prevDir)
+    private val currentPathObserver = Observer<String> { t ->
+        val pathView = findViewById<TextView>(R.id.dir_path)
+        pathView.text = t
     }
 
-    private fun selectAllCurrent() {
-        if (currentDirs.all {it.isSelected})
-            currentDirs.forEach {it.changeSelected(false)}
-        else
-            currentDirs.forEach {it.changeSelected(true)}
-        list.adapter?.notifyDataSetChanged()
-    }
 
+    /*
     private fun loadFiles(tree: FileTreeComponent? = null) {
         var tmpTree = tree
         if(tree == null) {
@@ -190,7 +113,6 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
         }
 
         for (child in tmpTree?.childsList()!!) {
-            Log.d("qwe", child.model?.name ?: "None")
             if (child.isSelected) {
                 if (child.isDirectory)
                     loadAllFiles(child)
@@ -209,26 +131,37 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
             else
                 pathsToUpload.add(child.model?.file?.absolutePath!!)
         }
-    }
+    } */
 
-    private fun sendPaths() {
+    private fun sendPaths(paths: ArrayList<String>) {
         intent = Intent()
-        intent.putStringArrayListExtra(PATHS, pathsToUpload)
+        intent.putStringArrayListExtra(PATHS, paths)
         setResult(RESULT_OK, intent)
         finish()
     }
 
     override fun onClick(position: Int) {
-        val currChild = currentTree?.childAt(position)
-        if (currChild?.isDirectory == true)
-            openDir(currChild)
-        else
-            selectFile(currChild, position)
+        scope.launch {
+            val isDirectory = currentDirs[position].isDirectory
+            if (isDirectory) {
+                loadingSpinner.visibility = View.VISIBLE
+                currentDirs.clear()
+                list.adapter?.notifyDataSetChanged()
+            }
+
+            model.onClick(position)
+
+            if (isDirectory) {
+                loadingSpinner.visibility = View.GONE
+                list.scrollToPosition(0)
+            }
+        }
     }
 
     override fun onCheckboxClick(position: Int, value: Boolean) {
-        currentTree?.childAt(position)?.changeSelected(value)
+        model.onCheckboxClick(position, value)
     }
+
 
     abstract class FileTreeComponent : Serializable {
         var parent : FileTreeComponent? = null
