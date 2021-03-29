@@ -3,6 +3,7 @@ package com.kmem.myplayer.ui.fragments
 import android.Manifest
 import android.content.ComponentName
 import android.content.Context
+import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
@@ -89,7 +90,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
                     mediaController = playerServiceBinder!!.getMediaSessionToken()?.let { MediaControllerCompat(activity, it) }
                     mediaController?.registerCallback(callback!!)
                     callback?.onPlaybackStateChanged(mediaController?.playbackState)
-                    playerServiceBinder!!.getLiveUri().observe(this@PlaylistFragment, uriObserver)
+                    playerServiceBinder!!.getLiveUri().observe(viewLifecycleOwner, uriObserver)
                     playerService = playerServiceBinder?.getService()
                 } catch (e: RemoteException) {
                     mediaController = null
@@ -105,7 +106,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             }
         }
 
-        activity?.bindService(Intent(activity, PlayerService::class.java), serviceConnection!!, Context.BIND_AUTO_CREATE)
+        activity?.bindService(Intent(activity, PlayerService::class.java), serviceConnection!!, BIND_AUTO_CREATE)
 
         return layout
     }
@@ -115,11 +116,22 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         MainScope().launch {
             withContext(Dispatchers.IO) {
                 audios.clear()
-                audios.addAll(AppDatabase.getInstance(context!!).trackDao().getTracks())
+                audios.addAll(AppDatabase.getInstance(requireContext()).trackDao().getTracks())
             }
             list.adapter?.notifyDataSetChanged()
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        playerServiceBinder = null
+        if (mediaController != null) {
+            mediaController?.unregisterCallback(callback!!)
+            mediaController = null
+        }
+        activity?.unbindService(serviceConnection!!)
+    }
+
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (data == null) return
@@ -133,9 +145,9 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
                     val track = createTrackFromPath(path, position + sizeBeforeAdd) // offset to positions of new tracks
                     tracks.add(track)
                 }
-                AppDatabase.getInstance(context!!).trackDao().insertAll(tracks)
+                AppDatabase.getInstance(requireContext()).trackDao().insertAll(tracks)
                 audios.clear()
-                audios.addAll(AppDatabase.getInstance(context!!).trackDao().getTracks())
+                audios.addAll(AppDatabase.getInstance(requireContext()).trackDao().getTracks())
             }
             val adapter = PlaylistAdapter(audios)
             val callback = PlaylistItemTouchHelperCallback(adapter)
@@ -155,7 +167,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     private fun createTrackFromPath(path: String, position: Int) : Track {
         val uri = Uri.fromFile(File(path))
-        val helper = MetadataHelper(context!!, uri)
+        val helper = MetadataHelper(requireContext(), uri)
         var title = helper.getTitle() ?: "Unknown"
         val artist = helper.getAuthor() ?: "Unknown"
         val fileName = File(path).name.replace(".mp3", "")
@@ -165,11 +177,11 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     }
 
     private fun checkPermission() : Boolean {
-        return ContextCompat.checkSelfPermission(context!!, PERMISSION_STRING) == PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(requireContext(), PERMISSION_STRING) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun requestPermission() {
-        if (ContextCompat.checkSelfPermission(context!!, PERMISSION_STRING)
+        if (ContextCompat.checkSelfPermission(requireContext(), PERMISSION_STRING)
                 != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(PERMISSION_STRING),
                     PERMISSION_CODE)
@@ -201,7 +213,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     override fun updatePositions() {
         MainScope().launch {
             withContext(Dispatchers.IO) {
-                AppDatabase.getInstance(context!!).trackDao().updateAll(audios)
+                AppDatabase.getInstance(requireContext()).trackDao().updateAll(audios)
                 playerService?.updatePositions()
             }
         }

@@ -1,5 +1,6 @@
 package com.kmem.myplayer.ui.activities
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -10,6 +11,7 @@ import androidx.viewpager.widget.ViewPager
 import com.kmem.myplayer.ui.fragments.MainPlayerFragment
 import com.kmem.myplayer.ui.fragments.PlaylistFragment
 import com.kmem.myplayer.R
+import com.kmem.myplayer.service.PlayerService
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -18,6 +20,7 @@ class MainActivity : AppCompatActivity() {
         val pagerAdapter = SectionsPagerAdapter(supportFragmentManager)
         val viewPager = findViewById<View>(R.id.pager) as ViewPager
         viewPager.adapter = pagerAdapter
+        startService(Intent(this, PlayerService::class.java))
     }
 
     private inner class SectionsPagerAdapter(fm: FragmentManager?) : FragmentPagerAdapter(fm!!, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {

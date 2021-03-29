@@ -132,7 +132,7 @@ class PlayerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         MediaButtonReceiver.handleIntent(mediaSession, intent)
-        return super.onStartCommand(intent, flags, startId)
+        return START_STICKY
     }
 
     override fun onDestroy() {
@@ -188,7 +188,7 @@ class PlayerService : Service() {
                     } else {
                         audioManager?.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
                     }
-                    if(audioFocusResult != AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+                    if (audioFocusResult != AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
                         return
                 }
 
@@ -205,14 +205,18 @@ class PlayerService : Service() {
 
         override fun onPause() {
             if (exoPlayer!!.playWhenReady) {
-               exoPlayer?.playWhenReady = false
-               unregisterReceiver(becomingNoisyReceiver)
+                exoPlayer?.playWhenReady = false
+                unregisterReceiver(becomingNoisyReceiver)
             }
 
-            mediaSession?.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PAUSED, exoPlayer?.contentPosition!!, 1F).build())
-            currentState = PlaybackStateCompat.STATE_PAUSED
+            if (audioFocusRequested) {
+                audioFocusRequested = false
 
-            refreshNotificationAndForegroundStatus(currentState)
+                mediaSession?.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PAUSED, exoPlayer?.contentPosition!!, 1F).build())
+                currentState = PlaybackStateCompat.STATE_PAUSED
+
+                refreshNotificationAndForegroundStatus(currentState)
+            }
         }
 
         override fun onStop() {
@@ -254,17 +258,11 @@ class PlayerService : Service() {
             currentPosition.value = musicRepository?.currentItemIndex
             updateMetadataFromTrack(track)
 
-            refreshNotificationAndForegroundStatus(currentState)
-
             prepareToPlay(track.uri)
 
-            if (currentState == PlaybackStateCompat.STATE_PLAYING) {
-                mediaSession?.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PLAYING, exoPlayer?.contentPosition!!, 1F).build())
-            }
-            else {
-                mediaSession?.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1F).build())
-                currentState = PlaybackStateCompat.STATE_SKIPPING_TO_NEXT
-            }
+            refreshNotificationAndForegroundStatus(currentState)
+
+            mediaSession?.setPlaybackState(stateBuilder.setState(currentState, exoPlayer?.contentPosition!!, 1F).build())
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -281,17 +279,11 @@ class PlayerService : Service() {
             currentPosition.value = musicRepository?.currentItemIndex
             updateMetadataFromTrack(track)
 
-            refreshNotificationAndForegroundStatus(currentState)
-
             prepareToPlay(track.uri)
 
-            if (currentState == PlaybackStateCompat.STATE_PLAYING) {
-                mediaSession?.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PLAYING, exoPlayer?.contentPosition!!, 1F).build())
-            }
-            else {
-                mediaSession?.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1F).build())
-                currentState = PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS
-            }
+            refreshNotificationAndForegroundStatus(currentState)
+
+            mediaSession?.setPlaybackState(stateBuilder.setState(currentState, exoPlayer?.contentPosition!!, 1F).build())
         }
 
         override fun onSeekTo(pos: Long) {
@@ -351,132 +343,139 @@ class PlayerService : Service() {
             metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, track.artist)
             metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, track.artist)
             metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, track.duration)
-            val mmr = MediaMetadataRetriever().apply { setDataSource(context, track.uri) }
-            val art = mmr.embeddedPicture
-            if (art != null)
-                metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, BitmapFactory.decodeByteArray(art, 0, art.size ?: 0))
-            else
-                metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, BitmapFactory.decodeResource(resources, R.drawable.without_album))
-
-            val metadata = metadataBuilder.build()
-
-
+            var metadata = metadataBuilder.build()
             currentMetadata.value = metadata
             mediaSession?.setMetadata(metadata)
-        }
-    }
 
-    private var audioFocusChangeListener : AudioManager.OnAudioFocusChangeListener = object : AudioManager.OnAudioFocusChangeListener {
-        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-        override fun onAudioFocusChange(focusChange: Int) {
-            when (focusChange) {
-                AudioManager.AUDIOFOCUS_GAIN -> {
-                    mediaSessionCallback.onPlay()
-                    exoPlayer?.volume = 1F
-                    refreshNotificationAndForegroundStatus(PlaybackState.STATE_PLAYING);
+            MainScope().launch {
+                withContext(Dispatchers.IO) {
+                    val mmr = MediaMetadataRetriever().apply { setDataSource(context, track.uri) }
+                    val art = mmr.embeddedPicture
+                    if (art != null)
+                        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, BitmapFactory.decodeByteArray(art, 0, art.size
+                                ?: 0))
+                    else
+                        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, BitmapFactory.decodeResource(resources, R.drawable.without_album))
                 }
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                    exoPlayer?.volume = 0.4F
-                    refreshNotificationAndForegroundStatus(PlaybackState.STATE_PLAYING);
+
+                metadata = metadataBuilder.build()
+                currentMetadata.value = metadata
+                mediaSession?.setMetadata(metadata)
+            }
+        }
+    }
+
+        private var audioFocusChangeListener: AudioManager.OnAudioFocusChangeListener = object : AudioManager.OnAudioFocusChangeListener {
+            @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+            override fun onAudioFocusChange(focusChange: Int) {
+                when (focusChange) {
+                    AudioManager.AUDIOFOCUS_GAIN -> {
+                        exoPlayer?.volume = 1F
+                    }
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                        exoPlayer?.volume = 0.3F
+                    }
+                    else -> mediaSessionCallback.onPause()
                 }
-                else -> mediaSessionCallback.onPause()
-            }
-        }
-    }
-
-    private val becomingNoisyReceiver : BroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            // Disconnecting headphones - stop playback
-            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY == intent?.action)
-                mediaSessionCallback.onPause()
-        }
-    }
-
-    private var exoPlayerListener : Player.EventListener = object : Player.EventListener {
-        override fun onTracksChanged(trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray) { }
-
-        override fun onLoadingChanged(isLoading: Boolean) { }
-
-        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-        override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            if (playWhenReady && playbackState == ExoPlayer.STATE_ENDED) {
-                mediaSessionCallback.onSkipToNext()
             }
         }
 
-        override fun onPlayerError(error: ExoPlaybackException) { }
-
-        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) { }
-    }
-
-    override fun onBind(intent: Intent?): IBinder? {
-        return PlayerServiceBinder()
-    }
-
-    inner class PlayerServiceBinder : Binder() {
-        fun getMediaSessionToken() : MediaSessionCompat.Token? {
-            return mediaSession?.sessionToken
-        }
-
-        fun getLiveMetadata() : LiveData<MediaMetadataCompat> {
-            return currentMetadata
-        }
-
-        fun getLivePosition() : LiveData<Int> {
-            return currentPosition
-        }
-
-        fun getLiveUri() : LiveData<Uri> {
-            return currentUri
-        }
-
-        fun getService() : PlayerService {
-            return this@PlayerService
-        }
-    }
-
-    private fun refreshNotificationAndForegroundStatus(playbackState: Int) : Unit {
-        when(playbackState) {
-            PlaybackStateCompat.STATE_PLAYING -> startForeground(NOTIFICATION_ID, getNotification(playbackState))
-            PlaybackStateCompat.STATE_PAUSED -> {
-                NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, getNotification(playbackState))
-                stopForeground(false)
+        private val becomingNoisyReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                // Disconnecting headphones - stop playback
+                if (AudioManager.ACTION_AUDIO_BECOMING_NOISY == intent?.action)
+                    mediaSessionCallback.onPause()
             }
-            else -> stopForeground(false)
-        }
-    }
-
-    private fun getNotification(playbackState: Int) : Notification {
-        val builder = MediaStyleHelper.from(this, mediaSession!!)
-        builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_previous, getString(R.string.previous),
-                MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)))
-
-        if (playbackState == PlaybackStateCompat.STATE_PLAYING) {
-            builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_pause, getString(R.string.pause),
-                    MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY_PAUSE)))
-        } else {
-            builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_play, getString(R.string.play),
-                    MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY_PAUSE)))
         }
 
-        builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_next, getString(R.string.next),
-                MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)))
-        builder.setStyle(androidx.media.app.NotificationCompat.MediaStyle()
-                .setShowActionsInCompactView(0, 1, 2)
-                .setShowCancelButton(true)
-                .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_STOP))
-                .setMediaSession(mediaSession?.sessionToken)) // setMediaSession required for Android Wear
-        builder.setSmallIcon(R.mipmap.ic_launcher)
-        builder.color = ContextCompat.getColor(this, R.color.design_default_color_primary_dark) // The whole background (in MediaStyle), not just icon background
-        builder.setShowWhen(false)
-        builder.setContentTitle(resources.getString(R.string.app_name))
-        builder.priority = NotificationCompat.PRIORITY_HIGH
-        //builder.setOnlyAlertOnce(true)
-        builder.setNotificationSilent()
-        builder.setChannelId(NOTIFICATION_DEFAULT_CHANNEL_ID)
+        private var exoPlayerListener: Player.EventListener = object : Player.EventListener {
+            override fun onTracksChanged(trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray) {}
 
-        return builder.build()
-    }
+            override fun onLoadingChanged(isLoading: Boolean) {}
 
+            @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+            override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+                if (playWhenReady && playbackState == ExoPlayer.STATE_ENDED) {
+                    mediaSessionCallback.onSkipToNext()
+                }
+            }
+
+            override fun onPlayerError(error: ExoPlaybackException) {}
+
+            override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {}
+        }
+
+        override fun onBind(intent: Intent?): IBinder? {
+            return PlayerServiceBinder()
+        }
+
+        inner class PlayerServiceBinder : Binder() {
+            fun getMediaSessionToken(): MediaSessionCompat.Token? {
+                return mediaSession?.sessionToken
+            }
+
+            fun getLiveMetadata(): LiveData<MediaMetadataCompat> {
+                return currentMetadata
+            }
+
+            fun getLivePosition(): LiveData<Int> {
+                return currentPosition
+            }
+
+            fun getLiveUri(): LiveData<Uri> {
+                return currentUri
+            }
+
+            fun getService(): PlayerService {
+                return this@PlayerService
+            }
+        }
+
+        private fun refreshNotificationAndForegroundStatus(playbackState: Int): Unit {
+            when (playbackState) {
+                PlaybackStateCompat.STATE_PLAYING -> {
+                    startForeground(NOTIFICATION_ID, getNotification(playbackState))
+                    NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, getNotification(playbackState))
+                }
+                PlaybackStateCompat.STATE_PAUSED -> {
+                    NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, getNotification(playbackState))
+                    //stopForeground(false)
+                }
+                else -> stopForeground(true)
+            }
+        }
+
+        private fun getNotification(playbackState: Int): Notification {
+            Log.d("state", playbackState.toString())
+            val builder = MediaStyleHelper.from(this, mediaSession!!)
+            builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_previous, getString(R.string.previous),
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)))
+
+            if (playbackState == PlaybackStateCompat.STATE_PLAYING) {
+                builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_pause, getString(R.string.pause),
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY_PAUSE)))
+            } else {
+                builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_play, getString(R.string.play),
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY_PAUSE)))
+            }
+
+            builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_next, getString(R.string.next),
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)))
+            builder.setStyle(androidx.media.app.NotificationCompat.MediaStyle()
+                    .setShowActionsInCompactView(0, 1, 2)
+                    .setShowCancelButton(true)
+                    .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_STOP))
+                    .setMediaSession(mediaSession?.sessionToken)) // setMediaSession required for Android Wear
+            builder.setSmallIcon(R.mipmap.ic_launcher)
+            builder.color = ContextCompat.getColor(this, R.color.design_default_color_primary_dark) // The whole background (in MediaStyle), not just icon background
+            builder.setShowWhen(false)
+            builder.setContentTitle(resources.getString(R.string.app_name))
+            builder.priority = NotificationCompat.PRIORITY_HIGH
+            //builder.setOnlyAlertOnce(true)
+            builder.setNotificationSilent()
+            builder.setChannelId(NOTIFICATION_DEFAULT_CHANNEL_ID)
+
+            return builder.build()
+        }
 
 }

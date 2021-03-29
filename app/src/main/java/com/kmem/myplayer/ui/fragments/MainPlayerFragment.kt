@@ -47,7 +47,7 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
     private var durationBarJob : Job? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
+                              savedInstanceState: Bundle?): View {
         // Inflate the layout for this fragment
         layout = inflater.inflate(R.layout.fragment_main_player, container, false)
         val prevButton = layout.findViewById<View>(R.id.prev_button) as ImageView
@@ -68,7 +68,8 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
                 if (isPlaying) {
                     playButton.setImageResource(R.drawable.baseline_pause_24)
                     durationBarJob?.cancel()
-                    runDurationBarUpdate()
+                    if (isResumed)
+                        runDurationBarUpdate()
                 }
                 else {
                     playButton.setImageResource(R.drawable.baseline_play_arrow_24)
@@ -87,7 +88,7 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
                     mediaController = playerServiceBinder!!.getMediaSessionToken()?.let { MediaControllerCompat(activity, it) }
                     mediaController?.registerCallback(callback!!)
                     callback?.onPlaybackStateChanged(mediaController?.playbackState)
-                    playerServiceBinder!!.getLiveMetadata().observe(this@MainPlayerFragment, metadataObserver)
+                    playerServiceBinder!!.getLiveMetadata().observe(viewLifecycleOwner, metadataObserver)
                 } catch (e: RemoteException) {
                     mediaController = null
                 }
@@ -139,6 +140,13 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
         val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
         // update duration if there is already playing track on pause
         durationBar.progress = mediaController?.playbackState?.position?.toInt() ?: 0
+
+        if (isPlaying) runDurationBarUpdate()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        durationBarJob?.cancel()
     }
 
     override fun onDestroy() {
