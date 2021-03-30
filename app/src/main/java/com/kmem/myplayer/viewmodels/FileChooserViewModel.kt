@@ -1,14 +1,13 @@
 package com.kmem.myplayer.viewmodels
 
 import android.app.Application
-import android.view.View
+
 import androidx.core.content.ContextCompat.getExternalFilesDirs
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.kmem.myplayer.ui.activities.FileChooserActivity
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -20,10 +19,11 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
     val currentPath : LiveData<String> = _currentPath
     val currentDirName : LiveData<String> = _currentDirName
     val currentDirs : LiveData<ArrayList<FileChooserActivity.FileTreeComponent>> = _currentDirs
-    var currentTree : FileChooserActivity.FileTreeComponent? = null
     var wasSelectedOneFile = false
     var positionSelected = 0
-    val pathsToUpload : ArrayList<String> = ArrayList()
+
+    private var currentTree : FileChooserActivity.FileTreeComponent? = null
+    private val pathsToUpload : ArrayList<String> = ArrayList()
 
     init {
         setHomeDirs()
@@ -63,7 +63,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         _currentDirs.value = currentTree?.childsList()!!
     }
 
-    suspend fun openDir(dir: FileChooserActivity.FileTreeComponent?) {
+    private suspend fun openDir(dir: FileChooserActivity.FileTreeComponent?) {
         if (dir == null)
             return
         // main tree hasn't parent
@@ -104,7 +104,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         currentTree?.childAt(position)?.changeSelected(value)
     }
 
-    fun selectFile(file: FileChooserActivity.FileTreeComponent, position: Int) {
+    private fun selectFile(file: FileChooserActivity.FileTreeComponent, position: Int) {
         wasSelectedOneFile = true
         positionSelected = position
         file.changeSelected(!file.isSelected)

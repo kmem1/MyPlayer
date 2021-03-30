@@ -2,7 +2,6 @@ package com.kmem.myplayer.ui.fragments
 
 import android.Manifest
 import android.content.ComponentName
-import android.content.Context
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
@@ -23,29 +22,31 @@ import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.AppDatabase
 import com.kmem.myplayer.data.Track
+import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.activities.FileChooserActivity
 import com.kmem.myplayer.ui.adapters.PlaylistAdapter
-import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.helpers.PlaylistItemTouchHelperCallback
 import com.kmem.myplayer.utils.MetadataHelper
+import com.kmem.myplayer.viewmodels.PlaylistViewModel
 import kotlinx.coroutines.*
 import java.io.File
 
 class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
-    var audios : ArrayList<Track> = ArrayList<Track>()
-    lateinit var list : RecyclerView
+    private var audios : ArrayList<Track> = ArrayList()
+    private lateinit var list : RecyclerView
     private var playerService : PlayerService? = null
     private var playerServiceBinder : PlayerService.PlayerServiceBinder? = null
     private var mediaController : MediaControllerCompat? = null
     private var callback : MediaControllerCompat.Callback? = null
     private var serviceConnection : ServiceConnection? = null
-    private lateinit var layout : View
+    private lateinit var model : PlaylistViewModel
 
     override var currentUri: Uri = Uri.EMPTY
 
@@ -57,6 +58,10 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         val layout = inflater.inflate(R.layout.fragment_playlist, container, false)
+
+        model = ViewModelProvider(requireActivity()).get(PlaylistViewModel::class.java)
+
+        model.audios.observe(viewLifecycleOwner, audiosObserver)
 
         list = layout.findViewById<View>(R.id.songs_list) as RecyclerView
         val adapter = PlaylistAdapter(audios)
@@ -111,15 +116,10 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         return layout
     }
 
-    override fun onStart() {
-        super.onStart()
-        MainScope().launch {
-            withContext(Dispatchers.IO) {
-                audios.clear()
-                audios.addAll(AppDatabase.getInstance(requireContext()).trackDao().getTracks())
-            }
-            list.adapter?.notifyDataSetChanged()
-        }
+    private val audiosObserver = Observer<ArrayList<Track>> { newAudios ->
+        audios.clear()
+        audios.addAll(newAudios)
+        list.adapter?.notifyDataSetChanged()
     }
 
     override fun onDestroy() {
@@ -139,41 +139,14 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         if (paths.size == 0) return
         MainScope().launch {
             withContext(Dispatchers.IO) {
-                val tracks = ArrayList<Track>()
-                val sizeBeforeAdd = audios.size
-                for ((position, path) in paths.withIndex()) {
-                    val track = createTrackFromPath(path, position + sizeBeforeAdd) // offset to positions of new tracks
-                    tracks.add(track)
-                }
-                AppDatabase.getInstance(requireContext()).trackDao().insertAll(tracks)
-                audios.clear()
-                audios.addAll(AppDatabase.getInstance(requireContext()).trackDao().getTracks())
+                model.addTracks(paths)
             }
-            val adapter = PlaylistAdapter(audios)
-            val callback = PlaylistItemTouchHelperCallback(adapter)
-            val touchHelper = ItemTouchHelper(callback)
-            touchHelper.attachToRecyclerView(list)
-            adapter.setListener(this@PlaylistFragment)
-            list.adapter = adapter
-            list.adapter?.notifyDataSetChanged()
-            playerService?.getNewTracks()
         }
     }
 
     private val uriObserver = Observer<Uri> {newUri ->
         currentUri = newUri
         list.adapter?.notifyDataSetChanged()
-    }
-
-    private fun createTrackFromPath(path: String, position: Int) : Track {
-        val uri = Uri.fromFile(File(path))
-        val helper = MetadataHelper(requireContext(), uri)
-        var title = helper.getTitle() ?: "Unknown"
-        val artist = helper.getAuthor() ?: "Unknown"
-        val fileName = File(path).name.replace(".mp3", "")
-        if (title == "Unknown" || artist == "Unknown")
-            title = fileName
-        return Track(position, title, artist, uri, helper.getDuration(), fileName)
     }
 
     private fun checkPermission() : Boolean {
@@ -213,7 +186,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     override fun updatePositions() {
         MainScope().launch {
             withContext(Dispatchers.IO) {
-                AppDatabase.getInstance(requireContext()).trackDao().updateAll(audios)
+                model.updatePositions(audios)
                 playerService?.updatePositions()
             }
         }

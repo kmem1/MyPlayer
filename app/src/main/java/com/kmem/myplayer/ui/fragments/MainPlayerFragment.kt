@@ -1,16 +1,10 @@
 package com.kmem.myplayer.ui.fragments
 
-import android.Manifest
 import android.content.ComponentName
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
-import android.graphics.BitmapFactory
-import android.media.MediaMetadataRetriever
-import android.media.MediaPlayer
-import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
 import android.os.IBinder
 import android.os.RemoteException
 import android.support.v4.media.MediaMetadataCompat
@@ -28,10 +22,10 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import com.kmem.myplayer.R
 import com.kmem.myplayer.service.PlayerService
-import com.kmem.myplayer.ui.activities.MainActivity
-import kotlinx.coroutines.*
-import java.io.IOException
-import java.text.SimpleDateFormat
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
@@ -45,6 +39,7 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
     private lateinit var layout : View
     private var isPlaying = false
     private var durationBarJob : Job? = null
+    private var isStarted = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View {
@@ -68,7 +63,7 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
                 if (isPlaying) {
                     playButton.setImageResource(R.drawable.baseline_pause_24)
                     durationBarJob?.cancel()
-                    if (isResumed)
+                    if (isStarted)
                         runDurationBarUpdate()
                 }
                 else {
@@ -135,18 +130,21 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
         return layout
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onStart() {
+        super.onStart()
         val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
         // update duration if there is already playing track on pause
         durationBar.progress = mediaController?.playbackState?.position?.toInt() ?: 0
 
         if (isPlaying) runDurationBarUpdate()
+
+        isStarted = true
     }
 
-    override fun onPause() {
-        super.onPause()
+    override fun onStop() {
+        super.onStop()
         durationBarJob?.cancel()
+        isStarted = false
     }
 
     override fun onDestroy() {
