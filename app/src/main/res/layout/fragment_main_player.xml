@@ -11,6 +11,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginEnd="20dp"
+        android:background="#FFFFFF"
         android:src="@drawable/baseline_keyboard_arrow_left_24"
         app:layout_constraintBottom_toBottomOf="@+id/play_button"
         app:layout_constraintEnd_toStartOf="@+id/play_button"
@@ -94,20 +95,19 @@
     </LinearLayout>
 
 
-    <androidx.cardview.widget.CardView
+    <androidx.cardview.widget.CardView xmlns:card_view="http://schemas.android.com/apk/res-auto"
         android:id="@+id/card_view"
-        xmlns:card_view="http://schemas.android.com/apk/res-auto"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        card_view:cardElevation="12dp"
-        card_view:cardCornerRadius="10dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.120000005"
-        app:layout_constraintWidth_percent="0.82">
+        app:layout_constraintWidth_percent="0.82"
+        card_view:cardCornerRadius="10dp"
+        card_view:cardElevation="12dp">
 
         <ImageView
             android:id="@+id/album_image"
@@ -121,13 +121,13 @@
         android:id="@+id/duration_bar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:max="1000000"
         app:layout_constraintBottom_toTopOf="@+id/play_button"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/card_view"
         app:layout_constraintVertical_bias="0.92"
-        app:layout_constraintWidth_percent="0.75"
-        android:max="1000000"/>
+        app:layout_constraintWidth_percent="0.75" />
 
     <TextView
         android:id="@+id/curr_duration"
@@ -155,10 +155,8 @@
         android:id="@+id/shuffle_button"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="@null"
+        android:background="@drawable/baseline_shuffle_enabled_24"
         android:scaleType="fitCenter"
-        android:src="@drawable/baseline_shuffle_black_24"
-        android:tint="#5C5C5C"
         app:layout_constraintBottom_toBottomOf="@+id/prev_button"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintEnd_toStartOf="@+id/prev_button"
@@ -166,7 +164,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/prev_button"
         app:layout_constraintVertical_bias="0.511"
-        app:layout_constraintWidth_percent="0.08" />
+        app:layout_constraintWidth_percent="0.1" />
 
     <ImageButton
         android:id="@+id/repeat_button"
@@ -174,7 +172,7 @@
         android:layout_height="0dp"
         android:background="@null"
         android:scaleType="fitCenter"
-        android:src="@drawable/baseline_repeat_black_24"
+        android:src="@drawable/baseline_repeat_24"
         android:tint="#5C5C5C"
         app:layout_constraintBottom_toBottomOf="@+id/next_button"
         app:layout_constraintDimensionRatio="1:1"
@@ -183,6 +181,6 @@
         app:layout_constraintStart_toEndOf="@+id/next_button"
         app:layout_constraintTop_toTopOf="@+id/next_button"
         app:layout_constraintVertical_bias="0.526"
-        app:layout_constraintWidth_percent="0.08" />
+        app:layout_constraintWidth_percent="0.1" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

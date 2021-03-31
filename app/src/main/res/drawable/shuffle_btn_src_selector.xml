@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="false">
+        <bitmap android:src="@drawable/baseline_shuffle_enabled_24"
+            android:alpha="77"
+            android:tint="#5C5C5C">
+        </bitmap>
+    </item>
+    <item android:state_selected="true" android:drawable="@drawable/baseline_shuffle_enabled_24" />
+</selector>

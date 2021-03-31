@@ -158,6 +158,10 @@ class PlayerService : Service() {
         }
     }
 
+    fun setShuffle(value: Boolean) {
+        musicRepository?.shuffle = value
+    }
+
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
         var currentState = PlaybackStateCompat.STATE_STOPPED;
 

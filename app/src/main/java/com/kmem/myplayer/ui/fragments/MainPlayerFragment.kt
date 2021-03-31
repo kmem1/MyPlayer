@@ -1,9 +1,15 @@
 package com.kmem.myplayer.ui.fragments
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
 import android.content.ComponentName
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.TransitionDrawable
 import android.os.Bundle
 import android.os.IBinder
 import android.os.RemoteException
@@ -14,10 +20,12 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.TextView
+import androidx.core.animation.addListener
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import com.kmem.myplayer.R
@@ -36,10 +44,12 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
     private var mediaController : MediaControllerCompat? = null
     private var callback : MediaControllerCompat.Callback? = null
     private var serviceConnection : ServiceConnection? = null
+    private lateinit var playerService : PlayerService
     private lateinit var layout : View
     private var isPlaying = false
     private var durationBarJob : Job? = null
     private var isStarted = false
+    private var shuffled = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View {
@@ -48,6 +58,8 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
         val prevButton = layout.findViewById<View>(R.id.prev_button) as ImageView
         val playButton = layout.findViewById<View>(R.id.play_button) as ImageView
         val nextButton = layout.findViewById<View>(R.id.next_button) as ImageView
+        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button) as ImageButton
+        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button) as ImageButton
 
         // select TextViews for sliding long text
         layout.findViewById<TextView>(R.id.track_title).isSelected = true
@@ -84,6 +96,7 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
                     mediaController?.registerCallback(callback!!)
                     callback?.onPlaybackStateChanged(mediaController?.playbackState)
                     playerServiceBinder!!.getLiveMetadata().observe(viewLifecycleOwner, metadataObserver)
+                    playerService = playerServiceBinder!!.getService()
                 } catch (e: RemoteException) {
                     mediaController = null
                 }
@@ -123,6 +136,19 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
                 layout.findViewById<SeekBar>(R.id.duration_bar).progress = 0
                 mediaController?.transportControls?.skipToPrevious()
             }
+        }
+
+        if (!shuffled) shuffleButton.alpha = 0.3f
+        shuffleButton.setOnClickListener {
+            var fromAlpha = 0.3f
+            var toAlpha = 1.0f
+            if (shuffled)
+                fromAlpha = toAlpha.also { toAlpha = fromAlpha }
+            val alphaAnimator = ObjectAnimator.ofFloat(shuffleButton, View.ALPHA, fromAlpha, toAlpha)
+            alphaAnimator.duration = 200
+            alphaAnimator.start()
+            shuffled = !shuffled
+            playerService.setShuffle(shuffled)
         }
 
         setupDurationBarListener()
