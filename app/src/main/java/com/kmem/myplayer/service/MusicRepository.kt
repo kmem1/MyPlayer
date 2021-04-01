@@ -99,6 +99,23 @@ class MusicRepository(val context: Context) {
         return track
     }
 
+    fun getAtPosition(pos: Int) : Track {
+        val track = data!![pos]
+        if (shuffle) {
+            if (track in shuffle_stack) {
+                shuffle_stack.remove(track)
+                shuffle_stack.add(track)
+            } else {
+                shuffle_data.remove(track)
+                shuffle_stack.add(track)
+            }
+        }
+
+        currentItemIndex = pos
+        currentUri = track.uri
+        return track
+    }
+
     fun getCurrent() : Track? {
         if (maxIndex == -1) return null
         currentUri = data!![currentItemIndex].uri

@@ -18,7 +18,8 @@
         <service
             android:name=".service.PlayerService"
             android:exported="true"
-            tools:ignore="ExportedService" >
+            tools:ignore="ExportedService"
+            android:stopWithTask="false">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>

@@ -20,13 +20,12 @@ class MainActivity : AppCompatActivity() {
         val pagerAdapter = SectionsPagerAdapter(supportFragmentManager)
         val viewPager = findViewById<View>(R.id.pager) as ViewPager
         viewPager.adapter = pagerAdapter
-        startService(Intent(this, PlayerService::class.java))
+        startService(Intent(baseContext, PlayerService::class.java))
     }
 
     private inner class SectionsPagerAdapter(fm: FragmentManager?) : FragmentPagerAdapter(fm!!, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
         override fun getCount(): Int {
             return 2
-
         }
 
         override fun getItem(position: Int): Fragment {

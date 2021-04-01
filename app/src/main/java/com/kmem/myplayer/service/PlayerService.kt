@@ -168,7 +168,8 @@ class PlayerService : Service() {
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onPlay() {
             if (!exoPlayer!!.playWhenReady) {
-                startService(Intent(applicationContext, PlayerService::class.java))
+                Log.d("qwe", "STARTED")
+                startService(Intent(baseContext, PlayerService::class.java))
 
                 if (musicRepository == null) return
 
@@ -213,14 +214,14 @@ class PlayerService : Service() {
                 unregisterReceiver(becomingNoisyReceiver)
             }
 
-            if (audioFocusRequested) {
+            if (audioFocusRequested)
                 audioFocusRequested = false
 
                 mediaSession?.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PAUSED, exoPlayer?.contentPosition!!, 1F).build())
                 currentState = PlaybackStateCompat.STATE_PAUSED
 
                 refreshNotificationAndForegroundStatus(currentState)
-            }
+
         }
 
         override fun onStop() {
@@ -264,9 +265,9 @@ class PlayerService : Service() {
 
             prepareToPlay(track.uri)
 
-            refreshNotificationAndForegroundStatus(currentState)
-
             mediaSession?.setPlaybackState(stateBuilder.setState(currentState, exoPlayer?.contentPosition!!, 1F).build())
+
+            refreshNotificationAndForegroundStatus(currentState)
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -285,47 +286,61 @@ class PlayerService : Service() {
 
             prepareToPlay(track.uri)
 
-            refreshNotificationAndForegroundStatus(currentState)
-
             mediaSession?.setPlaybackState(stateBuilder.setState(currentState, exoPlayer?.contentPosition!!, 1F).build())
+
+            refreshNotificationAndForegroundStatus(currentState)
         }
 
         override fun onSeekTo(pos: Long) {
             exoPlayer?.seekTo(pos)
 
-            refreshNotificationAndForegroundStatus(currentState)
-
             mediaSession?.setPlaybackState(stateBuilder.setState(currentState, exoPlayer?.contentPosition!!, 1F).build())
+
+            refreshNotificationAndForegroundStatus(currentState)
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onCustomAction(action: String?, extras: Bundle?) {
             if (action == ACTION_PLAY_AT_POSITION && extras != null) {
+                Log.d("qwe", "STARTED")
+                startService(Intent(baseContext, PlayerService::class.java))
+
                 if (musicRepository == null) return
 
                 val position = extras.getInt(EXTRA_POSITION)
-                musicRepository?.currentItemIndex = position
-                currentPosition.value = musicRepository?.currentItemIndex
+                val track = musicRepository?.getAtPosition(position)
 
-                if (!exoPlayer!!.playWhenReady) {
-                    onPlay()
-                } else {
-                    val track = musicRepository?.getCurrent()
-
-                    if (track == null) {
-                        Toast.makeText(applicationContext, "Add items to playlist", Toast.LENGTH_SHORT).show()
-                        return
-                    }
-
-                    updateMetadataFromTrack(track)
-
-                    prepareToPlay(track.uri)
-
-                    refreshNotificationAndForegroundStatus(currentState)
-
-                    mediaSession?.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PLAYING, exoPlayer?.contentPosition!!, 1F).build())
-                    currentState = PlaybackStateCompat.STATE_PLAYING
+                if (track == null) {
+                    Toast.makeText(applicationContext, "Add items to playlist", Toast.LENGTH_SHORT).show()
+                    return
                 }
+
+                currentPosition.value = musicRepository?.currentItemIndex
+                updateMetadataFromTrack(track)
+
+                prepareToPlay(track.uri)
+
+                if (!audioFocusRequested) {
+                    audioFocusRequested = true
+
+                    val audioFocusResult = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        audioManager?.requestAudioFocus(audioFocusRequest!!)
+                    } else {
+                        audioManager?.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
+                    }
+                    if (audioFocusResult != AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+                        return
+                }
+
+                mediaSession?.isActive = true
+                registerReceiver(becomingNoisyReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY))
+                exoPlayer!!.playWhenReady = true
+
+
+                mediaSession?.setPlaybackState(stateBuilder.setState(PlaybackStateCompat.STATE_PLAYING, exoPlayer?.contentPosition!!, 1F).build())
+                currentState = PlaybackStateCompat.STATE_PLAYING
+
+                refreshNotificationAndForegroundStatus(currentState)
             }
         }
 
@@ -438,20 +453,24 @@ class PlayerService : Service() {
         private fun refreshNotificationAndForegroundStatus(playbackState: Int): Unit {
             when (playbackState) {
                 PlaybackStateCompat.STATE_PLAYING -> {
+                    Log.d("qwe", "FOREGROUND")
                     startForeground(NOTIFICATION_ID, getNotification(playbackState))
-                    NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, getNotification(playbackState))
+                    NotificationManagerCompat.from(baseContext).notify(NOTIFICATION_ID, getNotification(playbackState))
                 }
                 PlaybackStateCompat.STATE_PAUSED -> {
-                    NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, getNotification(playbackState))
+                    NotificationManagerCompat.from(baseContext).notify(NOTIFICATION_ID, getNotification(playbackState))
                     //stopForeground(false)
                 }
-                else -> stopForeground(true)
+                else -> {
+                    Log.d("qwe", "NOT FOREGROUND")
+                    stopForeground(true)
+                }
             }
         }
 
         private fun getNotification(playbackState: Int): Notification {
             Log.d("state", playbackState.toString())
-            val builder = MediaStyleHelper.from(this, mediaSession!!)
+            val builder = MediaStyleHelper.from(baseContext, mediaSession!!)
             builder.addAction(NotificationCompat.Action(android.R.drawable.ic_media_previous, getString(R.string.previous),
                     MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)))
 
