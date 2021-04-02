@@ -37,10 +37,8 @@ import com.google.android.exoplayer2.upstream.*
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.ui.activities.MainActivity
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
+import java.util.*
 
 class PlayerService : Service() {
     companion object {
@@ -75,6 +73,8 @@ class PlayerService : Service() {
     private var dataSourceFactory : DataSource.Factory? = null
 
     private var musicRepository : MusicRepository? = null
+
+    private var inactivityCheckJob : Job? = null
 
     val currentMetadata : MutableLiveData<MediaMetadataCompat> = MutableLiveData<MediaMetadataCompat>()
     val currentPosition : MutableLiveData<Int> = MutableLiveData<Int>()
@@ -162,13 +162,16 @@ class PlayerService : Service() {
         musicRepository?.shuffle = value
     }
 
+    fun getShuffle() : Boolean {
+        return musicRepository?.shuffle ?: false
+    }
+
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
         var currentState = PlaybackStateCompat.STATE_STOPPED;
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onPlay() {
             if (!exoPlayer!!.playWhenReady) {
-                Log.d("qwe", "STARTED")
                 startService(Intent(baseContext, PlayerService::class.java))
 
                 if (musicRepository == null) return
@@ -221,7 +224,6 @@ class PlayerService : Service() {
                 currentState = PlaybackStateCompat.STATE_PAUSED
 
                 refreshNotificationAndForegroundStatus(currentState)
-
         }
 
         override fun onStop() {
@@ -302,7 +304,6 @@ class PlayerService : Service() {
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onCustomAction(action: String?, extras: Bundle?) {
             if (action == ACTION_PLAY_AT_POSITION && extras != null) {
-                Log.d("qwe", "STARTED")
                 startService(Intent(baseContext, PlayerService::class.java))
 
                 if (musicRepository == null) return
@@ -453,16 +454,21 @@ class PlayerService : Service() {
         private fun refreshNotificationAndForegroundStatus(playbackState: Int): Unit {
             when (playbackState) {
                 PlaybackStateCompat.STATE_PLAYING -> {
-                    Log.d("qwe", "FOREGROUND")
                     startForeground(NOTIFICATION_ID, getNotification(playbackState))
                     NotificationManagerCompat.from(baseContext).notify(NOTIFICATION_ID, getNotification(playbackState))
+                    inactivityCheckJob?.cancel()
                 }
                 PlaybackStateCompat.STATE_PAUSED -> {
                     NotificationManagerCompat.from(baseContext).notify(NOTIFICATION_ID, getNotification(playbackState))
-                    //stopForeground(false)
+                    inactivityCheckJob = MainScope().launch {
+                        withContext(Dispatchers.Default) {
+                            delay(10000)
+                            Log.d("qwe", "Stopped")
+                        }
+                        mediaSessionCallback.onStop()
+                    }
                 }
                 else -> {
-                    Log.d("qwe", "NOT FOREGROUND")
                     stopForeground(true)
                 }
             }
@@ -500,5 +506,4 @@ class PlayerService : Service() {
 
             return builder.build()
         }
-
 }
