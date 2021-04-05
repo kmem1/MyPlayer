@@ -1,15 +1,10 @@
 package com.kmem.myplayer.ui.fragments
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
 import android.content.ComponentName
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.TransitionDrawable
 import android.os.Bundle
 import android.os.IBinder
 import android.os.RemoteException
@@ -25,7 +20,6 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.TextView
-import androidx.core.animation.addListener
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import com.kmem.myplayer.R
@@ -36,20 +30,21 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
-class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
-    private val GET_AUDIO_REQUEST_CODE = 222
-
+class MainPlayerFragment : Fragment() {
+    private val FROM_ALPHA = 0.3f
+    private val TO_ALPHA = 1f
 
     private var playerServiceBinder : PlayerService.PlayerServiceBinder? = null
     private var mediaController : MediaControllerCompat? = null
     private var callback : MediaControllerCompat.Callback? = null
     private var serviceConnection : ServiceConnection? = null
-    private lateinit var playerService : PlayerService
+    private var playerService : PlayerService? = null
     private lateinit var layout : View
     private var isPlaying = false
     private var durationBarJob : Job? = null
     private var isStarted = false
     private var shuffled = false
+    private var repeated = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View {
@@ -97,6 +92,8 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
                     callback?.onPlaybackStateChanged(mediaController?.playbackState)
                     playerServiceBinder!!.getLiveMetadata().observe(viewLifecycleOwner, metadataObserver)
                     playerService = playerServiceBinder!!.getService()
+                    shuffled = playerService?.getShuffle() ?: false
+                    shuffleButton.alpha = if (shuffled) TO_ALPHA else FROM_ALPHA
                 } catch (e: RemoteException) {
                     mediaController = null
                 }
@@ -138,17 +135,28 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
             }
         }
 
-        if (!shuffled) shuffleButton.alpha = 0.3f
         shuffleButton.setOnClickListener {
-            var fromAlpha = 0.3f
-            var toAlpha = 1.0f
+            var fromAlpha = FROM_ALPHA
+            var toAlpha = TO_ALPHA
             if (shuffled)
                 fromAlpha = toAlpha.also { toAlpha = fromAlpha }
             val alphaAnimator = ObjectAnimator.ofFloat(shuffleButton, View.ALPHA, fromAlpha, toAlpha)
             alphaAnimator.duration = 200
             alphaAnimator.start()
             shuffled = !shuffled
-            playerService.setShuffle(shuffled)
+            playerService?.setShuffle(shuffled)
+        }
+
+        repeatButton.setOnClickListener {
+            var fromAlpha = FROM_ALPHA
+            var toAlpha = TO_ALPHA
+            if (repeated)
+                fromAlpha = toAlpha.also { toAlpha = fromAlpha }
+            val alphaAnimator = ObjectAnimator.ofFloat(repeatButton, View.ALPHA, fromAlpha, toAlpha)
+            alphaAnimator.duration = 200
+            alphaAnimator.start()
+            repeated = !repeated
+            playerService?.repeatMode = repeated
         }
 
         setupDurationBarListener()
@@ -161,6 +169,14 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
         val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
         // update duration if there is already playing track on pause
         durationBar.progress = mediaController?.playbackState?.position?.toInt() ?: 0
+
+        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button) as ImageButton
+        shuffled = playerService?.getShuffle() ?: false
+        shuffleButton.alpha = if (shuffled) TO_ALPHA else FROM_ALPHA
+
+        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button) as ImageButton
+        repeated = playerService?.repeatMode ?: false
+        repeatButton.alpha = if (repeated) TO_ALPHA else FROM_ALPHA
 
         if (isPlaying) runDurationBarUpdate()
 
@@ -201,6 +217,7 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
         titleView.text = newMetadata?.getString(MediaMetadataCompat.METADATA_KEY_TITLE)
         albumImageView.setImageBitmap(newMetadata?.getBitmap(MediaMetadataCompat.METADATA_KEY_ART))
         durationBar.max = newMetadata?.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)?.toInt() ?: 1
+        durationBar.isEnabled = true
         val mins = newMetadata!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) / 1000 / 60
         val secs = newMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) / 1000 % 60
         val duration = if (secs < 10) "$mins:0$secs" else "$mins:$secs" // "0:00" duration format
@@ -217,6 +234,7 @@ class MainPlayerFragment : Fragment()/*, View.OnClickListener */ {
 
     private fun setupDurationBarListener() {
         val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
+        durationBar.isEnabled = false
         durationBar.setOnSeekBarChangeListener(object : OnSeekBarChangeListener {
             var changedDuration = 0
             override fun onStopTrackingTouch(seekBar: SeekBar) {

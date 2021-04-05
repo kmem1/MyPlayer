@@ -8,7 +8,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.BitmapFactory
 import android.media.*
-import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Binder
 import android.os.Build
@@ -39,15 +38,17 @@ import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.ui.activities.MainActivity
 import kotlinx.coroutines.*
 import java.util.*
+import kotlin.collections.ArrayList
 
 class PlayerService : Service() {
     companion object {
         const val ACTION_PLAY_AT_POSITION = "play_at_position"
         const val EXTRA_POSITION = "extra_position"
+        private const val NOTIFICATION_ID = 404
+        private const val NOTIFICATION_DEFAULT_CHANNEL_ID = "default_channel"
+        private const val INACTIVITY_TIMEOUT = 600000L // 10 mins
     }
 
-    private val NOTIFICATION_ID = 404;
-    private val NOTIFICATION_DEFAULT_CHANNEL_ID = "default_channel"
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private val metadataBuilder = MediaMetadataCompat.Builder()
@@ -79,6 +80,7 @@ class PlayerService : Service() {
     val currentMetadata : MutableLiveData<MediaMetadataCompat> = MutableLiveData<MediaMetadataCompat>()
     val currentPosition : MutableLiveData<Int> = MutableLiveData<Int>()
     val currentUri : MutableLiveData<Uri> = MutableLiveData<Uri>()
+    var repeatMode : Boolean = false
 
     @SuppressLint("WrongConstant")
     override fun onCreate() {
@@ -144,17 +146,13 @@ class PlayerService : Service() {
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     fun updatePositions() {
         MainScope().launch {
-            withContext(Dispatchers.IO) {
-                musicRepository?.updatePositions()
-            }
+            musicRepository?.updatePositions()
         }
     }
 
-    fun getNewTracks() {
+    fun addNewTracks(tracks: ArrayList<Track>) {
         MainScope().launch {
-            withContext(Dispatchers.IO) {
-                musicRepository?.getNewTracks()
-            }
+            musicRepository?.addNewTracks(tracks)
         }
     }
 
@@ -167,11 +165,11 @@ class PlayerService : Service() {
     }
 
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
-        var currentState = PlaybackStateCompat.STATE_STOPPED;
+        var currentState = PlaybackStateCompat.STATE_STOPPED
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onPlay() {
-            if (!exoPlayer!!.playWhenReady) {
+            if (!exoPlayer!!.playWhenReady || repeatMode) {
                 startService(Intent(baseContext, PlayerService::class.java))
 
                 if (musicRepository == null) return
@@ -248,7 +246,7 @@ class PlayerService : Service() {
 
             refreshNotificationAndForegroundStatus(currentState)
 
-            stopSelf()
+            //stopSelf()
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -346,9 +344,8 @@ class PlayerService : Service() {
         }
 
         private fun prepareToPlay(uri: Uri) {
-            if (uri != currentUri.value) {
+            if (uri != currentUri.value || repeatMode) {
                 currentUri.value = uri
-                //val mediaSource = ExtractorMediaSource(uri, dataSourceFactory, extractorsFactory, null, null)
                 val mediaItem = MediaItem.fromUri(uri)
                 val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory!!, extractorsFactory!!).createMediaSource(mediaItem)
                 exoPlayer?.setMediaSource(mediaSource)
@@ -416,7 +413,14 @@ class PlayerService : Service() {
             @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
             override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
                 if (playWhenReady && playbackState == ExoPlayer.STATE_ENDED) {
-                    mediaSessionCallback.onSkipToNext()
+                    if (repeatMode) {
+                        mediaSessionCallback.onPlay()
+                    } else {
+                        val isEnded = musicRepository?.isEnded()
+                        mediaSessionCallback.onSkipToNext()
+                        if (isEnded == true)
+                            mediaSessionCallback.onPause()
+                    }
                 }
             }
 
@@ -425,7 +429,7 @@ class PlayerService : Service() {
             override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {}
         }
 
-        override fun onBind(intent: Intent?): IBinder? {
+        override fun onBind(intent: Intent?): IBinder {
             return PlayerServiceBinder()
         }
 
@@ -438,10 +442,6 @@ class PlayerService : Service() {
                 return currentMetadata
             }
 
-            fun getLivePosition(): LiveData<Int> {
-                return currentPosition
-            }
-
             fun getLiveUri(): LiveData<Uri> {
                 return currentUri
             }
@@ -451,7 +451,7 @@ class PlayerService : Service() {
             }
         }
 
-        private fun refreshNotificationAndForegroundStatus(playbackState: Int): Unit {
+        private fun refreshNotificationAndForegroundStatus(playbackState: Int) {
             when (playbackState) {
                 PlaybackStateCompat.STATE_PLAYING -> {
                     startForeground(NOTIFICATION_ID, getNotification(playbackState))
@@ -462,14 +462,13 @@ class PlayerService : Service() {
                     NotificationManagerCompat.from(baseContext).notify(NOTIFICATION_ID, getNotification(playbackState))
                     inactivityCheckJob = MainScope().launch {
                         withContext(Dispatchers.Default) {
-                            delay(10000)
-                            Log.d("qwe", "Stopped")
+                            delay(INACTIVITY_TIMEOUT)
                         }
                         mediaSessionCallback.onStop()
                     }
                 }
                 else -> {
-                    stopForeground(true)
+                    mediaSession?.isActive = false
                 }
             }
         }

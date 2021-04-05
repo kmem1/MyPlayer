@@ -48,7 +48,8 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     private var serviceConnection : ServiceConnection? = null
     private lateinit var model : PlaylistViewModel
 
-    override var currentUri: Uri = Uri.EMPTY
+    override var currentUri : Uri = Uri.EMPTY
+    override var deleteMode : Boolean = false
 
     companion object {
         const val PERMISSION_STRING = Manifest.permission.READ_EXTERNAL_STORAGE
@@ -79,6 +80,26 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
                 startActivityForResult(intent,1)
             else
                 requestPermission()
+        }
+
+        val removeButton = layout.findViewById<ImageButton>(R.id.remove_tracks)
+        removeButton.setOnClickListener {
+            val selectAllButton = layout.findViewById<ImageButton>(R.id.select_all)
+            val deleteTracksButton = layout.findViewById<ImageButton>(R.id.delete_tracks)
+
+            deleteMode = !deleteMode
+            list.adapter?.notifyDataSetChanged()
+            if (deleteMode) {
+                touchHelper.attachToRecyclerView(null)
+                selectAllButton.visibility = View.VISIBLE
+                deleteTracksButton.visibility = View.VISIBLE
+                addButton.visibility = View.GONE
+            } else {
+                touchHelper.attachToRecyclerView(list)
+                selectAllButton.visibility = View.GONE
+                deleteTracksButton.visibility = View.GONE
+                addButton.visibility = View.VISIBLE
+            }
         }
 
         callback = object : MediaControllerCompat.Callback() {
@@ -120,6 +141,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         audios.clear()
         audios.addAll(newAudios)
         list.adapter?.notifyDataSetChanged()
+
     }
 
     override fun onDestroy() {
@@ -138,9 +160,8 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         val paths = data.getStringArrayListExtra(FileChooserActivity.PATHS) ?: ArrayList<String>()
         if (paths.size == 0) return
         MainScope().launch {
-            withContext(Dispatchers.IO) {
-                model.addTracks(paths)
-            }
+                val newTracks = model.addTracks(paths)
+                playerService?.addNewTracks(newTracks)
         }
     }
 

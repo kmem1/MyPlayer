@@ -38,6 +38,48 @@
                 android:tint="?attr/colorOnPrimary"
                 android:src="@drawable/baseline_add_24"
                 android:layout_alignParentStart="true" />
+
+            <ImageButton
+                android:id="@+id/select_all"
+                android:contentDescription="Select All"
+                android:layout_width="?attr/actionBarSize"
+                android:layout_height="match_parent"
+                android:background="@null"
+                android:scaleType="fitXY"
+                android:scaleX="0.6"
+                android:scaleY="0.6"
+                android:tint="?attr/colorOnPrimary"
+                android:src="@drawable/baseline_select_all_24"
+                android:visibility="gone"
+                android:layout_alignParentStart="true" />
+
+            <ImageButton
+                android:id="@+id/remove_tracks"
+                android:contentDescription="Remove Tracks"
+                android:layout_width="?attr/actionBarSize"
+                android:layout_height="match_parent"
+                android:background="@null"
+                android:scaleType="fitXY"
+                android:scaleX="0.6"
+                android:scaleY="0.6"
+                android:tint="?attr/colorOnPrimary"
+                android:src="@drawable/baseline_remove_24"
+                android:layout_alignParentEnd="true" />
+
+            <ImageButton
+                android:id="@+id/delete_tracks"
+                android:contentDescription="Delete Tracks"
+                android:layout_width="?attr/actionBarSize"
+                android:layout_height="match_parent"
+                android:background="@null"
+                android:scaleType="fitXY"
+                android:scaleX="0.6"
+                android:scaleY="0.6"
+                android:tint="?attr/colorOnPrimary"
+                android:src="@drawable/baseline_delete_24"
+                android:visibility="gone"
+                android:layout_toStartOf="@+id/remove_tracks" />
+
         </RelativeLayout>
 
     </androidx.appcompat.widget.Toolbar>

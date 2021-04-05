@@ -3,7 +3,9 @@ package com.kmem.myplayer.ui.adapters
 import android.net.Uri
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -19,6 +21,7 @@ class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapte
 
     interface Listener {
         var currentUri : Uri
+        var deleteMode : Boolean
 
         fun onClick(position: Int)
         fun updatePositions()
@@ -56,6 +59,12 @@ class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapte
         val secs = currAudio.duration / 1000 % 60
         val duration = if (secs < 10) "$mins:0$secs" else "$mins:$secs" // "0:00" duration format
         durationView.text = duration
+
+        val deleteCheckbox = audioView.findViewById<CheckBox>(R.id.delete_checkbox)
+        if (listener?.deleteMode == true)
+            deleteCheckbox.visibility = View.VISIBLE
+        else
+            deleteCheckbox.visibility = View.GONE
 
         audioView.setOnClickListener { listener?.onClick(position) }
 
