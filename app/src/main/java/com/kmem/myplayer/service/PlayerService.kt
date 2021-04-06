@@ -150,9 +150,9 @@ class PlayerService : Service() {
         }
     }
 
-    fun addNewTracks(tracks: ArrayList<Track>) {
+    fun addNewTracks() {
         MainScope().launch {
-            musicRepository?.addNewTracks(tracks)
+            musicRepository?.addNewTracks()
         }
     }
 
@@ -162,6 +162,20 @@ class PlayerService : Service() {
 
     fun getShuffle() : Boolean {
         return musicRepository?.shuffle ?: false
+    }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    fun deleteTracks(tracks: ArrayList<Track>) {
+        musicRepository?.deleteTracks(tracks)
+
+        // refresh current track
+        if (musicRepository?.getCurrent()?.uri != currentUri.value) {
+            val state = mediaSessionCallback.currentState
+            mediaSessionCallback.onPause()
+            mediaSessionCallback.onPlay() // play for update track
+            if (state != PlaybackStateCompat.STATE_PLAYING)
+                mediaSessionCallback.onPause()
+        }
     }
 
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {

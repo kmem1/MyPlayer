@@ -18,4 +18,7 @@ interface TrackDao {
 
     @Delete
     fun deleteTrack(track: Track)
+
+    @Delete
+    fun deleteAll(tracks: List<Track>)
 }

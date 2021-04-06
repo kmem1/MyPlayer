@@ -22,6 +22,7 @@ class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapte
     interface Listener {
         var currentUri : Uri
         var deleteMode : Boolean
+        var selectedCheckboxesPositions : ArrayList<Int>
 
         fun onClick(position: Int)
         fun updatePositions()
@@ -61,6 +62,14 @@ class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapte
         durationView.text = duration
 
         val deleteCheckbox = audioView.findViewById<CheckBox>(R.id.delete_checkbox)
+        val positions = listener!!.selectedCheckboxesPositions
+        deleteCheckbox.isChecked = position in positions
+        deleteCheckbox.setOnClickListener {
+            if (position in positions)
+                positions.remove(position)
+            else
+                positions.add(position)
+        }
         if (listener?.deleteMode == true)
             deleteCheckbox.visibility = View.VISIBLE
         else

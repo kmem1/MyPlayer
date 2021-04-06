@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.os.RemoteException
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -41,6 +42,8 @@ import java.io.File
 class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     private var audios : ArrayList<Track> = ArrayList()
     private lateinit var list : RecyclerView
+    private lateinit var touchHelper : ItemTouchHelper
+    private lateinit var layout : View
     private var playerService : PlayerService? = null
     private var playerServiceBinder : PlayerService.PlayerServiceBinder? = null
     private var mediaController : MediaControllerCompat? = null
@@ -50,6 +53,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     override var currentUri : Uri = Uri.EMPTY
     override var deleteMode : Boolean = false
+    override var selectedCheckboxesPositions : ArrayList<Int> = ArrayList()
 
     companion object {
         const val PERMISSION_STRING = Manifest.permission.READ_EXTERNAL_STORAGE
@@ -58,7 +62,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
-        val layout = inflater.inflate(R.layout.fragment_playlist, container, false)
+        layout = inflater.inflate(R.layout.fragment_playlist, container, false)
 
         model = ViewModelProvider(requireActivity()).get(PlaylistViewModel::class.java)
 
@@ -67,7 +71,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         list = layout.findViewById<View>(R.id.songs_list) as RecyclerView
         val adapter = PlaylistAdapter(audios)
         val touchCallback = PlaylistItemTouchHelperCallback(adapter)
-        val touchHelper = ItemTouchHelper(touchCallback)
+        touchHelper = ItemTouchHelper(touchCallback)
         touchHelper.attachToRecyclerView(list)
         adapter.setListener(this@PlaylistFragment)
         list.adapter = adapter
@@ -83,24 +87,44 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         }
 
         val removeButton = layout.findViewById<ImageButton>(R.id.remove_tracks)
+        val deleteTracksButton = layout.findViewById<ImageButton>(R.id.delete_tracks)
+        val selectAllButton = layout.findViewById<ImageButton>(R.id.select_all)
         removeButton.setOnClickListener {
-            val selectAllButton = layout.findViewById<ImageButton>(R.id.select_all)
-            val deleteTracksButton = layout.findViewById<ImageButton>(R.id.delete_tracks)
-
             deleteMode = !deleteMode
+            onDeleteModeChanged()
             list.adapter?.notifyDataSetChanged()
-            if (deleteMode) {
-                touchHelper.attachToRecyclerView(null)
-                selectAllButton.visibility = View.VISIBLE
-                deleteTracksButton.visibility = View.VISIBLE
-                addButton.visibility = View.GONE
-            } else {
-                touchHelper.attachToRecyclerView(list)
-                selectAllButton.visibility = View.GONE
-                deleteTracksButton.visibility = View.GONE
-                addButton.visibility = View.VISIBLE
-            }
         }
+
+        deleteTracksButton.setOnClickListener {
+            val tracks = ArrayList<Track>()
+            for (pos in selectedCheckboxesPositions)
+                tracks.add(audios[pos])
+
+            deleteMode = false
+            onDeleteModeChanged()
+
+            // async update Database
+            MainScope().launch {
+                model.deleteTracks(tracks)
+            }
+
+            playerService?.deleteTracks(tracks)
+        }
+
+        selectAllButton.setOnClickListener {
+            if (selectedCheckboxesPositions.size == audios.size) {
+                selectedCheckboxesPositions.clear()
+            } else {
+                for (pos in 0 until audios.size)
+                    if (pos !in selectedCheckboxesPositions)
+                        selectedCheckboxesPositions.add(pos)
+            }
+
+            list.adapter?.notifyDataSetChanged()
+        }
+
+
+
 
         callback = object : MediaControllerCompat.Callback() {
             override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
@@ -141,7 +165,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         audios.clear()
         audios.addAll(newAudios)
         list.adapter?.notifyDataSetChanged()
-
     }
 
     override fun onDestroy() {
@@ -160,8 +183,8 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         val paths = data.getStringArrayListExtra(FileChooserActivity.PATHS) ?: ArrayList<String>()
         if (paths.size == 0) return
         MainScope().launch {
-                val newTracks = model.addTracks(paths)
-                playerService?.addNewTracks(newTracks)
+            model.addTracks(paths)
+            playerService?.addNewTracks()
         }
     }
 
@@ -179,6 +202,25 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
                 != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(PERMISSION_STRING),
                     PERMISSION_CODE)
+        }
+    }
+
+    private fun onDeleteModeChanged() {
+        val addButton = layout.findViewById<ImageButton>(R.id.add_tracks)
+        val selectAllButton = layout.findViewById<ImageButton>(R.id.select_all)
+        val deleteTracksButton = layout.findViewById<ImageButton>(R.id.delete_tracks)
+
+        if (deleteMode) {
+            touchHelper.attachToRecyclerView(null)
+            selectAllButton.visibility = View.VISIBLE
+            deleteTracksButton.visibility = View.VISIBLE
+            addButton.visibility = View.GONE
+        } else {
+            touchHelper.attachToRecyclerView(list)
+            selectAllButton.visibility = View.GONE
+            deleteTracksButton.visibility = View.GONE
+            addButton.visibility = View.VISIBLE
+            selectedCheckboxesPositions.clear()
         }
     }
 

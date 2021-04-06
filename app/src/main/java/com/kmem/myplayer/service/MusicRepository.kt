@@ -2,14 +2,13 @@ package com.kmem.myplayer.service
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import com.kmem.myplayer.data.AppDatabase
 import com.kmem.myplayer.data.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class MusicRepository(val context: Context) {
-    private var data : List<Track>? = null
+    private var data : ArrayList<Track> = ArrayList()
     private var shuffle_data : ArrayList<Track> = ArrayList() // additional copy for shuffle mode
     private var shuffle_stack : ArrayList<Track> = ArrayList() // stack trace for shuffle mode
     private var stack_index = 0
@@ -33,33 +32,55 @@ class MusicRepository(val context: Context) {
         }
 
     init {
-        data = AppDatabase.getInstance(context).trackDao().getTracks()
-        maxIndex = if (data == null) -1 else data!!.size - 1
+        data.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+        maxIndex = data.lastIndex
     }
 
     suspend fun updatePositions() {
         withContext(Dispatchers.IO) {
-            data = AppDatabase.getInstance(context).trackDao().getTracks()
-            for (track in data!!) {
-                if (track.uri == currentUri) {
-                    currentItemIndex = track.position
-                    break
-                }
-            }
+            data.clear()
+            data.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+            val track = data.first { it.uri == currentUri }
+            currentItemIndex = track.position
         }
     }
 
-    suspend fun addNewTracks(tracks: ArrayList<Track>) {
+    suspend fun addNewTracks() {
         withContext(Dispatchers.IO) {
-            data = AppDatabase.getInstance(context).trackDao().getTracks()
-            maxIndex = if (data == null) -1 else data!!.size - 1
+            data.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+            maxIndex = data.lastIndex
 
             val isAlreadyShuffled = shuffle_stack.size == 1 && shuffle_stack[0].uri == currentUri
             if (shuffle || isAlreadyShuffled) {
                 shuffle_data.clear()
-                shuffle_data.addAll(data!!)
+                shuffle_data.addAll(data)
                 shuffle_data.removeAll(shuffle_stack)
                 shuffle_data.shuffle()
+            }
+        }
+    }
+
+    fun deleteTracks(tracks: ArrayList<Track>) {
+        data.removeAll(tracks)
+        maxIndex = data.lastIndex
+        var indexOfCurrentTrack = data.indexOfFirst { it.uri == currentUri }
+        // track that was playing is deleted
+        if (indexOfCurrentTrack == -1) {
+            if (currentItemIndex > maxIndex)
+                currentItemIndex = maxIndex
+        } else {
+            currentItemIndex = indexOfCurrentTrack
+        }
+
+        val isAlreadyShuffled = shuffle_stack.size == 1 && shuffle_stack[0].uri == currentUri
+        if (shuffle || isAlreadyShuffled) {
+            shuffle_data.removeAll(tracks)
+            indexOfCurrentTrack = shuffle_stack.indexOfFirst { it.uri == currentUri }
+            if (indexOfCurrentTrack == -1) {
+                if (stack_index > shuffle_stack.lastIndex)
+                    stack_index = shuffle_stack.lastIndex
+            } else {
+                stack_index = indexOfCurrentTrack
             }
         }
     }
@@ -89,10 +110,9 @@ class MusicRepository(val context: Context) {
             track = shuffle_stack[++stack_index]
         }
 
-        for (track in shuffle_data)
-            Log.d("qwe", track.fileName)
         currentUri = track.uri
-        currentItemIndex = data?.indexOf(track) ?: 0
+        currentItemIndex = data.indexOf(track)
+
         return track
     }
 
@@ -121,13 +141,13 @@ class MusicRepository(val context: Context) {
         val track = shuffle_stack[stack_index]
         
         currentUri = track.uri
-        currentItemIndex = data?.indexOf(track) ?: 0
+        currentItemIndex = data.indexOf(track)
         
         return track
     }
 
     fun getAtPosition(pos: Int) : Track {
-        val track = data!![pos]
+        val track = data[pos]
         if (shuffle) {
             if (track in shuffle_stack) {
                 shuffle_stack.remove(track)
@@ -141,14 +161,15 @@ class MusicRepository(val context: Context) {
 
         currentItemIndex = pos
         currentUri = track.uri
+
         return track
     }
 
     fun getCurrent() : Track? {
         if (maxIndex == -1) return null
+        currentUri = data[currentItemIndex].uri
 
-        currentUri = data!![currentItemIndex].uri
-        return data!![currentItemIndex]
+        return data[currentItemIndex]
     }
 
     fun isEnded() : Boolean {

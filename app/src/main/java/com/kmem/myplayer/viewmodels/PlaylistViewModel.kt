@@ -56,6 +56,15 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
         return Track(position, title, artist, uri, helper.getDuration(), fileName)
     }
 
+    suspend fun deleteTracks(tracks: ArrayList<Track>) {
+        withContext(Dispatchers.IO) {
+            AppDatabase.getInstance(getApplication()).trackDao().deleteAll(tracks)
+        }
+
+        _audios.value?.removeAll(tracks)
+        _audios.notifyObservers()
+    }
+
     suspend fun updatePositions(audios: ArrayList<Track>) {
         withContext(Dispatchers.IO) {
             AppDatabase.getInstance(getApplication()).trackDao().updateAll(audios)
