@@ -11,7 +11,6 @@ import android.os.RemoteException
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,32 +28,40 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/**
+ *  Фрагмент экрана состояния плеера.
+ *  Отвечает за графические элементы и взаимодействие с пользователем.
+ *  Получает информацию от сервиса через PlayerServiceBinder.
+ */
 
 class MainPlayerFragment : Fragment() {
     private val FROM_ALPHA = 0.3f
     private val TO_ALPHA = 1f
 
-    private var playerServiceBinder : PlayerService.PlayerServiceBinder? = null
-    private var mediaController : MediaControllerCompat? = null
-    private var callback : MediaControllerCompat.Callback? = null
-    private var serviceConnection : ServiceConnection? = null
-    private var playerService : PlayerService? = null
-    private lateinit var layout : View
+    private var playerServiceBinder: PlayerService.PlayerServiceBinder? = null
+    private var mediaController: MediaControllerCompat? = null
+    private var callback: MediaControllerCompat.Callback? = null
+    private var serviceConnection: ServiceConnection? = null
+    private var playerService: PlayerService? = null
+    private lateinit var layout: View
     private var isPlaying = false
-    private var durationBarJob : Job? = null
+    private var durationBarJob: Job? = null
     private var isStarted = false
     private var shuffled = false
     private var repeated = false
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         // Inflate the layout for this fragment
         layout = inflater.inflate(R.layout.fragment_main_player, container, false)
-        val prevButton = layout.findViewById<View>(R.id.prev_button) as ImageView
-        val playButton = layout.findViewById<View>(R.id.play_button) as ImageView
-        val nextButton = layout.findViewById<View>(R.id.next_button) as ImageView
-        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button) as ImageButton
-        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button) as ImageButton
+
+        val prevButton = layout.findViewById<ImageView>(R.id.prev_button)
+        val playButton = layout.findViewById<ImageView>(R.id.play_button)
+        val nextButton = layout.findViewById<ImageView>(R.id.next_button)
+        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
+        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
 
         // select TextViews for sliding long text
         layout.findViewById<TextView>(R.id.track_title).isSelected = true
@@ -72,8 +79,7 @@ class MainPlayerFragment : Fragment() {
                     durationBarJob?.cancel()
                     if (isStarted)
                         runDurationBarUpdate()
-                }
-                else {
+                } else {
                     playButton.setImageResource(R.drawable.baseline_play_arrow_24)
                     durationBarJob?.cancel()
                     val position = mediaController?.playbackState?.position?.toInt() ?: 0
@@ -87,10 +93,12 @@ class MainPlayerFragment : Fragment() {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 playerServiceBinder = service as PlayerService.PlayerServiceBinder
                 try {
-                    mediaController = playerServiceBinder!!.getMediaSessionToken()?.let { MediaControllerCompat(activity, it) }
+                    mediaController = playerServiceBinder!!.getMediaSessionToken()
+                        ?.let { MediaControllerCompat(activity, it) }
                     mediaController?.registerCallback(callback!!)
                     callback?.onPlaybackStateChanged(mediaController?.playbackState)
-                    playerServiceBinder!!.getLiveMetadata().observe(viewLifecycleOwner, metadataObserver)
+                    playerServiceBinder!!.getLiveMetadata()
+                        .observe(viewLifecycleOwner, metadataObserver)
                     playerService = playerServiceBinder!!.getService()
                     shuffled = playerService?.getShuffle() ?: false
                     shuffleButton.alpha = if (shuffled) TO_ALPHA else FROM_ALPHA
@@ -108,7 +116,11 @@ class MainPlayerFragment : Fragment() {
             }
         }
 
-        activity?.bindService(Intent(activity, PlayerService::class.java), serviceConnection!!, BIND_AUTO_CREATE)
+        activity?.bindService(
+            Intent(activity, PlayerService::class.java),
+            serviceConnection!!,
+            BIND_AUTO_CREATE
+        )
 
         playButton.setOnClickListener {
             if (mediaController != null) {
@@ -135,18 +147,21 @@ class MainPlayerFragment : Fragment() {
             }
         }
 
+        shuffleButton.isEnabled = false
         shuffleButton.setOnClickListener {
             var fromAlpha = FROM_ALPHA
             var toAlpha = TO_ALPHA
             if (shuffled)
                 fromAlpha = toAlpha.also { toAlpha = fromAlpha }
-            val alphaAnimator = ObjectAnimator.ofFloat(shuffleButton, View.ALPHA, fromAlpha, toAlpha)
+            val alphaAnimator =
+                ObjectAnimator.ofFloat(shuffleButton, View.ALPHA, fromAlpha, toAlpha)
             alphaAnimator.duration = 200
             alphaAnimator.start()
             shuffled = !shuffled
             playerService?.setShuffle(shuffled)
         }
 
+        repeatButton.isEnabled = false
         repeatButton.setOnClickListener {
             var fromAlpha = FROM_ALPHA
             var toAlpha = TO_ALPHA
@@ -206,17 +221,22 @@ class MainPlayerFragment : Fragment() {
         val albumImageView = layout.findViewById<ImageView>(R.id.album_image)
         val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
         val maxDurationView = layout.findViewById<TextView>(R.id.max_duration)
+        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
+        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
+
+        shuffleButton.isEnabled = true
+        repeatButton.isEnabled = true
 
 
         if (newMetadata?.getString(MediaMetadataCompat.METADATA_KEY_ARTIST) == "Unknown") {
             artistView.text = ""
-        }
-        else {
+        } else {
             artistView.text = newMetadata?.getString(MediaMetadataCompat.METADATA_KEY_ARTIST)
         }
         titleView.text = newMetadata?.getString(MediaMetadataCompat.METADATA_KEY_TITLE)
         albumImageView.setImageBitmap(newMetadata?.getBitmap(MediaMetadataCompat.METADATA_KEY_ART))
-        durationBar.max = newMetadata?.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)?.toInt() ?: 1
+        durationBar.max =
+            newMetadata?.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)?.toInt() ?: 1
         durationBar.isEnabled = true
         val mins = newMetadata!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) / 1000 / 60
         val secs = newMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) / 1000 % 60
@@ -267,7 +287,6 @@ class MainPlayerFragment : Fragment() {
                     val position = mediaController?.playbackState?.position?.toInt() ?: 0
                     positionView.progress = position
                     updateCurrentDurationView(position)
-                    Log.d("qwe", "qwe")
                     delay(500)
                 }
             }

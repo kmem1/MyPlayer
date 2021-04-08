@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.room.*
 import kotlinx.coroutines.internal.synchronized
 
+/**
+ * Класс, который содержит базу данных.
+ * */
 @Database(entities = [Track::class], version = 1)
 @TypeConverters(UriConverters::class)
 abstract class AppDatabase : RoomDatabase() {

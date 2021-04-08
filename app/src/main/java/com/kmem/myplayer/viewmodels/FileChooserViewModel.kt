@@ -11,19 +11,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-class FileChooserViewModel(application: Application) : AndroidViewModel(application) {
-    private val _currentPath : MutableLiveData<String> = MutableLiveData()
-    private val _currentDirName : MutableLiveData<String> = MutableLiveData()
-    private val _currentDirs : MutableLiveData<ArrayList<FileChooserActivity.FileTreeComponent>> = MutableLiveData()
+/**
+ *  ViewModel для FileChooserActivity.
+ *  Отвечает за обработку данных для активности, освобождая её от этой обязанности.
+ *  Таким образом, активность отвечает только за прорисовку элементов на экране и реакцию на действия пользователя.
+ *  Активность получает данные от этого класса.
+ */
 
-    val currentPath : LiveData<String> = _currentPath
-    val currentDirName : LiveData<String> = _currentDirName
-    val currentDirs : LiveData<ArrayList<FileChooserActivity.FileTreeComponent>> = _currentDirs
+class FileChooserViewModel(application: Application) : AndroidViewModel(application) {
+    private val _currentPath: MutableLiveData<String> = MutableLiveData()
+    private val _currentDirName: MutableLiveData<String> = MutableLiveData()
+    private val _currentDirs: MutableLiveData<ArrayList<FileChooserActivity.FileTreeComponent>> =
+        MutableLiveData()
+
+    val currentPath: LiveData<String> = _currentPath
+    val currentDirName: LiveData<String> = _currentDirName
+    val currentDirs: LiveData<ArrayList<FileChooserActivity.FileTreeComponent>> = _currentDirs
     var wasSelectedOneFile = false
     var positionSelected = 0
 
-    private var currentTree : FileChooserActivity.FileTreeComponent? = null
-    private val pathsToUpload : ArrayList<String> = ArrayList()
+    private var currentTree: FileChooserActivity.FileTreeComponent? = null
+    private val pathsToUpload: ArrayList<String> = ArrayList()
 
     init {
         setHomeDirs()
@@ -36,7 +44,8 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         var internalPath = externalDirs[0].absolutePath
         internalPath = internalPath.replaceFirst("/Android.+".toRegex(), "")
         val internalPathFile = File(internalPath)
-        val internalFileModel = FileChooserActivity.FileModel("Internal memory", internalPathFile) // Custom name
+        val internalFileModel =
+            FileChooserActivity.FileModel("Internal memory", internalPathFile) // Custom name
         result.add(internalFileModel)
         if (externalDirs.size > 1) {
             var sdPath = externalDirs[1].absolutePath
@@ -56,7 +65,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
                 this.initialize()
             }
 
-        while(currentTree?.parent != null)
+        while (currentTree?.parent != null)
             currentTree = currentTree?.parent
 
         wasSelectedOneFile = false
@@ -112,21 +121,21 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun selectAllCurrent() {
-        if (currentTree?.childsList()!!.all {it.isSelected})
-            currentTree?.childsList()!!.forEach {it.changeSelected(false)}
+        if (currentTree?.childsList()!!.all { it.isSelected })
+            currentTree?.childsList()!!.forEach { it.changeSelected(false) }
         else
-            currentTree?.childsList()!!.forEach {it.changeSelected(true)}
+            currentTree?.childsList()!!.forEach { it.changeSelected(true) }
 
         wasSelectedOneFile = false
         _currentDirs.value = currentTree?.childsList()!!
     }
 
-    fun loadFiles(tree: FileChooserActivity.FileTreeComponent? = null) : ArrayList<String> {
+    fun loadFiles(tree: FileChooserActivity.FileTreeComponent? = null): ArrayList<String> {
         var tmpTree = tree
-        if(tree == null) {
+        if (tree == null) {
             pathsToUpload.clear()
             // get the main tree
-            while(currentTree?.parent != null)
+            while (currentTree?.parent != null)
                 currentTree = currentTree?.parent
             tmpTree = currentTree
         }
@@ -153,5 +162,4 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
                 pathsToUpload.add(child.model?.file?.absolutePath!!)
         }
     }
-
 }

@@ -11,6 +11,16 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
 import com.kmem.myplayer.ui.activities.FileChooserActivity
 
+/**
+ *  Адаптер для элемента RecyclerView в FileChooserActivity.
+ *  Определяет поведение RecyclerView.
+ *  Отвечает за заполнение элемента списка информацией.
+ *  Отвечает за взаимодействие элементов списка с пользователем.
+ *
+ *  Аргументы:
+ *      ArrayList с деревьями файлов.
+ */
+
 class FileChooserAdapter(private val treeList: ArrayList<FileChooserActivity.FileTreeComponent>) : RecyclerView.Adapter<FileChooserAdapter.ViewHolder>() {
     private var listener: Listener? = null
 
@@ -29,7 +39,7 @@ class FileChooserAdapter(private val treeList: ArrayList<FileChooserActivity.Fil
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val fileView = LayoutInflater.from(parent.context)
-                .inflate(R.layout.file_list_item, parent, false) as LinearLayout
+            .inflate(R.layout.file_list_item, parent, false) as LinearLayout
         return ViewHolder(fileView)
     }
 
@@ -37,16 +47,21 @@ class FileChooserAdapter(private val treeList: ArrayList<FileChooserActivity.Fil
         val fileView = holder.fileView
         val fileIcon = fileView.findViewById<View>(R.id.file_icon) as ImageView
         val fileModel = treeList[position].model!!
-        if (fileModel.file.isDirectory) fileIcon.setImageResource(R.drawable.baseline_folder_24) else fileIcon.setImageResource(R.drawable.baseline_file_24)
+
+        if (fileModel.file.isDirectory)
+            fileIcon.setImageResource(R.drawable.baseline_folder_24)
+        else
+            fileIcon.setImageResource(R.drawable.baseline_file_24)
+
         val fileName = fileView.findViewById<View>(R.id.file_name) as TextView
         fileName.text = fileModel.name
         fileView.setOnClickListener { listener?.onClick(position) }
         val checkbox = fileView.findViewById<CheckBox>(R.id.checkbox)
         checkbox.isChecked = treeList[position].isSelected
         checkbox.setOnClickListener { buttonView ->
-                if (buttonView is CheckBox) {
-                    listener?.onCheckboxClick(position, buttonView.isChecked)
-                }
+            if (buttonView is CheckBox) {
+                listener?.onCheckboxClick(position, buttonView.isChecked)
             }
         }
+    }
 }

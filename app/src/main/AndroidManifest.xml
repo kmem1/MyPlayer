@@ -32,13 +32,6 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".receivers.BootCompleteReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </receiver>
-
         <activity android:name="com.kmem.myplayer.ui.activities.FileChooserActivity"
             android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar">
         </activity>

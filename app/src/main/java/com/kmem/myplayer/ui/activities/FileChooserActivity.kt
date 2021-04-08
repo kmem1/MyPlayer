@@ -2,40 +2,42 @@ package com.kmem.myplayer.ui.activities
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.kmem.myplayer.ui.adapters.FileChooserAdapter
 import com.kmem.myplayer.R
+import com.kmem.myplayer.ui.adapters.FileChooserAdapter
 import com.kmem.myplayer.viewmodels.FileChooserViewModel
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.Serializable
-import kotlin.collections.ArrayList
+
+/**
+ *  Активность экрана добавления песен.
+ *  Отвечает за графические элементы и взаимодействие с пользователем.
+ */
 
 class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
     companion object {
         const val PATHS = "paths"
     }
 
-    private val list by lazy {findViewById<RecyclerView>(R.id.fileList)}
-    private val currentDirs : ArrayList<FileTreeComponent> = ArrayList()
-    private lateinit var model : FileChooserViewModel
+    private val list by lazy { findViewById<RecyclerView>(R.id.fileList) }
+    private val currentDirs: ArrayList<FileTreeComponent> = ArrayList()
+    private lateinit var model: FileChooserViewModel
 
     private var scope = CoroutineScope(Dispatchers.Main + Job())
-    private lateinit var loadingSpinner : ProgressBar
-
-    private var pathsToUpload = ArrayList<String>()
+    private lateinit var loadingSpinner: ProgressBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,39 +102,6 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
         pathView.text = t
     }
 
-
-    /*
-    private fun loadFiles(tree: FileTreeComponent? = null) {
-        var tmpTree = tree
-        if(tree == null) {
-            pathsToUpload.clear()
-            // get the main tree
-            while(currentTree?.parent != null)
-                currentTree = currentTree?.parent
-            tmpTree = currentTree
-        }
-
-        for (child in tmpTree?.childsList()!!) {
-            if (child.isSelected) {
-                if (child.isDirectory)
-                    loadAllFiles(child)
-                else
-                    pathsToUpload.add(child.model?.file?.absolutePath!!)
-            } else if (child.hasSelectedChilds) { // always false for files (not dirs)
-                loadFiles(child)
-            }
-        }
-    }
-
-    private fun loadAllFiles(tree: FileTreeComponent?) {
-        for (child in tree?.childsList()!!) {
-            if (child.isDirectory)
-                loadAllFiles(child)
-            else
-                pathsToUpload.add(child.model?.file?.absolutePath!!)
-        }
-    } */
-
     private fun sendPaths(paths: ArrayList<String>) {
         intent = Intent()
         intent.putStringArrayListExtra(PATHS, paths)
@@ -164,22 +133,29 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
 
 
     abstract class FileTreeComponent : Serializable {
-        var parent : FileTreeComponent? = null
-        var model : FileModel? = null
-        var isSelected : Boolean = false
+        var parent: FileTreeComponent? = null
+        var model: FileModel? = null
+        var isSelected: Boolean = false
         var hasSelectedChilds = false
         var isInitialized = false
         open var isDirectory = false
 
         open fun initialize() {}
         open fun checkChilds() {}
-        open fun childAt(index: Int) : FileTreeComponent? { return null }
-        open fun childsList() : ArrayList<FileTreeComponent>? { return null }
+        open fun childAt(index: Int): FileTreeComponent? {
+            return null
+        }
+
+        open fun childsList(): ArrayList<FileTreeComponent>? {
+            return null
+        }
+
         open fun changeSelected(value: Boolean) {}
         open fun updateChilds(value: Boolean) {}
     }
 
-    class FileNode(parent: FileTreeComponent, model : FileModel) : FileTreeComponent(), Serializable {
+    class FileNode(parent: FileTreeComponent, model: FileModel) : FileTreeComponent(),
+        Serializable {
         init {
             this.parent = parent
             this.model = model
@@ -191,7 +167,8 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
         }
     }
 
-    class DirectoryNode(parent: FileTreeComponent?, model: FileModel?) : FileTreeComponent(), Serializable {
+    class DirectoryNode(parent: FileTreeComponent?, model: FileModel?) : FileTreeComponent(),
+        Serializable {
         var childs = ArrayList<FileTreeComponent>()
         var childModels = ArrayList<FileModel>() // models for lately initializing
         override var isDirectory = true
@@ -204,7 +181,7 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
         override fun initialize() {
             if (isInitialized)
                 return
-            var node : FileTreeComponent // temporary variable
+            var node: FileTreeComponent // temporary variable
 
             model?.file?.listFiles()?.forEach {
                 if (isAcceptable(it))
@@ -244,11 +221,10 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
         }
 
         override fun updateChilds(value: Boolean) {
-            childs.forEach {it.isSelected = value; it.updateChilds(value)}
+            childs.forEach { it.isSelected = value; it.updateChilds(value) }
         }
 
-        override fun childAt(index: Int) : FileTreeComponent {
-            //childs[index].initialize()
+        override fun childAt(index: Int): FileTreeComponent {
             return childs[index]
         }
 
@@ -257,12 +233,12 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
             return childs
         }
 
-        private fun isAcceptable(file: File) : Boolean {
+        private fun isAcceptable(file: File): Boolean {
             return (file.isDirectory && !file.name.startsWith('.'))
                     || (!file.isDirectory && file.name.endsWith(".mp3"))
         }
     }
 
     // file wrapper for custom name
-    data class FileModel(val name: String, val file : File) : Serializable
+    data class FileModel(val name: String, val file: File) : Serializable
 }

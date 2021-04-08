@@ -13,6 +13,11 @@ import com.kmem.myplayer.ui.fragments.PlaylistFragment
 import com.kmem.myplayer.R
 import com.kmem.myplayer.service.PlayerService
 
+/**
+ *  Главная активность приложения. Она запускается при открытии приложения.
+ *  Отвечает за запуск остальных экранов приложения.
+ */
+
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,7 +28,8 @@ class MainActivity : AppCompatActivity() {
         startService(Intent(baseContext, PlayerService::class.java))
     }
 
-    private inner class SectionsPagerAdapter(fm: FragmentManager?) : FragmentPagerAdapter(fm!!, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
+    private inner class SectionsPagerAdapter(fm: FragmentManager?) :
+        FragmentPagerAdapter(fm!!, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
         override fun getCount(): Int {
             return 2
         }

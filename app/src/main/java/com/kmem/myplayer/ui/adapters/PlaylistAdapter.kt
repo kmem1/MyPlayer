@@ -1,7 +1,6 @@
 package com.kmem.myplayer.ui.adapters
 
 import android.net.Uri
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,20 +14,29 @@ import com.kmem.myplayer.ui.helpers.ItemTouchHelperAdapter
 import java.util.*
 import kotlin.collections.ArrayList
 
+/**
+ *  Адаптер для элемента RecyclerView в PlaylistFragment.
+ *  Определяет поведение RecyclerView.
+ *  Отвечает за заполнение элемента списка информацией.
+ *  Отвечает за взаимодействие элементов списка с пользователем.
+ *  Аргументы:
+ *      ArrayList с песнями.
+ */
+
 class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapter<PlaylistAdapter.ViewHolder>()
                                                                                     , ItemTouchHelperAdapter {
-    private var listener : Listener? = null
+    private var listener: Listener? = null
 
     interface Listener {
-        var currentUri : Uri
-        var deleteMode : Boolean
-        var selectedCheckboxesPositions : ArrayList<Int>
+        var currentUri: Uri
+        var deleteMode: Boolean
+        var selectedCheckboxesPositions: ArrayList<Int>
 
         fun onClick(position: Int)
         fun updatePositions()
     }
 
-    fun setListener(listener : Listener?) {
+    fun setListener(listener: Listener?) {
         this.listener = listener
     }
 
@@ -38,7 +46,7 @@ class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapte
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val audioView = LayoutInflater.from(parent.context)
-                .inflate(R.layout.audio_list_item, parent, false) as LinearLayout
+            .inflate(R.layout.audio_list_item, parent, false) as LinearLayout
         return ViewHolder(audioView)
     }
 
@@ -81,18 +89,16 @@ class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapte
     }
 
     override fun onItemMove(fromPosition: Int, toPosition: Int): Boolean {
-        Log.d("qwe", "$fromPosition $toPosition")
-
         if (fromPosition > toPosition) {
             for (i in toPosition until fromPosition) {
                 audios[i].position = i + 1
-                audios[i+1].position = i
+                audios[i + 1].position = i
                 Collections.swap(audios, i, i + 1)
             }
         } else if (fromPosition < toPosition) {
             for (i in fromPosition until toPosition) {
                 audios[i].position = i + 1
-                audios[i+1].position = i
+                audios[i + 1].position = i
                 Collections.swap(audios, i, i + 1)
             }
         }

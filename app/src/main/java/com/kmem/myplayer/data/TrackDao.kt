@@ -2,6 +2,10 @@ package com.kmem.myplayer.data
 
 import androidx.room.*
 
+/**
+ * Класс, который отвечает за запросы к БД.
+ */
+
 @Dao
 interface TrackDao {
     @Query("SELECT * FROM playlist ORDER BY position")

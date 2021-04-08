@@ -1,8 +1,13 @@
 package com.kmem.myplayer.ui.helpers
 
-import android.util.Log
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
+
+/**
+ *  Используется адаптером RecyclerView для Drag'n'drop.
+ *  Аргументы:
+ *      Адаптер RecyclerView.
+ */
 
 class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapter) : ItemTouchHelper.Callback() {
     var dragFrom = -1
@@ -10,13 +15,20 @@ class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapt
 
     override fun isLongPressDragEnabled(): Boolean = true
 
-    override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int {
+    override fun getMovementFlags(
+        recyclerView: RecyclerView,
+        viewHolder: RecyclerView.ViewHolder
+    ): Int {
         val dragFlags = ItemTouchHelper.UP or ItemTouchHelper.DOWN
         val swipeFlags = 0
         return makeMovementFlags(dragFlags, swipeFlags)
     }
 
-    override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
+    override fun onMove(
+        recyclerView: RecyclerView,
+        viewHolder: RecyclerView.ViewHolder,
+        target: RecyclerView.ViewHolder
+    ): Boolean {
         if (viewHolder.itemViewType != target.itemViewType)
             return false
 
@@ -36,7 +48,7 @@ class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapt
         adapter.updatePositions(from, to)
     }
 
-    override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) { }
+    override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
 
     override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
         super.clearView(recyclerView, viewHolder)

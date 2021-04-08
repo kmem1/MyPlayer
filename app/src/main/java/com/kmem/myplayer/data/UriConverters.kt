@@ -3,6 +3,10 @@ package com.kmem.myplayer.data
 import android.net.Uri
 import androidx.room.TypeConverter
 
+/**
+ * Конвертер данных: URI <--> String.
+ */
+
 class UriConverters {
     @TypeConverter
     fun fromString(value: String): Uri {
