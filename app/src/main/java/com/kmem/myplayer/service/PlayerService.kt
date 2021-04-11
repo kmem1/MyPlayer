@@ -227,8 +227,11 @@ class PlayerService : Service() {
                 val track = musicRepository?.getCurrent()
 
                 if (track == null) {
-                    Toast.makeText(applicationContext, "Add items to playlist", Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(
+                        applicationContext,
+                        "Swipe Right to Left to add items to playlist",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return
                 }
 
@@ -331,8 +334,11 @@ class PlayerService : Service() {
             val track = musicRepository?.getNext()
 
             if (track == null) {
-                Toast.makeText(applicationContext, "Add items to playlist", Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(
+                    applicationContext,
+                    "Swipe Right to Left to add items to playlist",
+                    Toast.LENGTH_SHORT
+                ).show()
                 return
             }
 
@@ -358,8 +364,11 @@ class PlayerService : Service() {
             val track = musicRepository?.getPrevious()
 
             if (track == null) {
-                Toast.makeText(applicationContext, "Add items to playlist", Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(
+                    applicationContext,
+                    "Swipe Right to Left to add items to playlist",
+                    Toast.LENGTH_SHORT
+                ).show()
                 return
             }
 
@@ -403,8 +412,11 @@ class PlayerService : Service() {
                 val track = musicRepository?.getAtPosition(position)
 
                 if (track == null) {
-                    Toast.makeText(applicationContext, "Add items to playlist", Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(
+                        applicationContext,
+                        "Swipe Right to Left to add items to playlist",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return
                 }
 
@@ -524,7 +536,8 @@ class PlayerService : Service() {
         override fun onTracksChanged(
             trackGroups: TrackGroupArray,
             trackSelections: TrackSelectionArray
-        ) { }
+        ) {
+        }
 
         override fun onLoadingChanged(isLoading: Boolean) {}
 

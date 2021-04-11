@@ -17,6 +17,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
@@ -67,7 +68,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         layout = inflater.inflate(R.layout.fragment_playlist, container, false)
 
         model = ViewModelProvider(requireActivity()).get(PlaylistViewModel::class.java)
@@ -159,11 +160,13 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             }
         }
 
+
         activity?.bindService(
             Intent(activity, PlayerService::class.java),
             serviceConnection!!,
             BIND_AUTO_CREATE
         )
+
 
         return layout
     }
@@ -190,8 +193,11 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         val paths = data.getStringArrayListExtra(FileChooserActivity.PATHS) ?: ArrayList<String>()
         if (paths.size == 0) return
         MainScope().launch {
+            val loadingSpinner = layout.findViewById<ProgressBar>(R.id.progress_bar)
+            loadingSpinner.visibility = View.VISIBLE
             model.addTracks(paths)
             playerService?.addNewTracks()
+            loadingSpinner.visibility = View.GONE
         }
     }
 

@@ -10,8 +10,8 @@ import androidx.recyclerview.widget.RecyclerView
  */
 
 class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapter) : ItemTouchHelper.Callback() {
-    var dragFrom = -1
-    var dragTo = -1
+    private var dragFrom = -1
+    private var dragTo = -1
 
     override fun isLongPressDragEnabled(): Boolean = true
 

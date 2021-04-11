@@ -110,7 +110,7 @@ class MusicRepository(val context: Context) {
     }
 
     private fun getNextOnShuffle(): Track {
-        var track: Track? = null
+        val track: Track?
         if (stack_index == shuffle_stack.size - 1) {
             if (shuffle_data.isEmpty())
                 refreshShuffleData()

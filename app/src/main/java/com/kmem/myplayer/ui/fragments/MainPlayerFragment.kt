@@ -116,11 +116,13 @@ class MainPlayerFragment : Fragment() {
             }
         }
 
+
         activity?.bindService(
             Intent(activity, PlayerService::class.java),
             serviceConnection!!,
             BIND_AUTO_CREATE
         )
+
 
         playButton.setOnClickListener {
             if (mediaController != null) {

@@ -53,6 +53,13 @@
                 android:visibility="gone"
                 android:layout_alignParentStart="true" />
 
+            <ProgressBar
+                android:id="@+id/progress_bar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_centerHorizontal="true"/>
+
             <ImageButton
                 android:id="@+id/remove_tracks"
                 android:contentDescription="Remove Tracks"

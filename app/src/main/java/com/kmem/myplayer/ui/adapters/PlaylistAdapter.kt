@@ -1,5 +1,6 @@
 package com.kmem.myplayer.ui.adapters
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
@@ -50,6 +51,7 @@ class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapte
         return ViewHolder(audioView)
     }
 
+    @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val audioView = holder.audioView
         val currAudio = audios[position]
@@ -61,8 +63,7 @@ class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapte
         if (currAudio.title == "Unknown" || currAudio.artist == "Unknown") {
             titleView.text = currAudio.title
         } else {
-            val correctTitle = currAudio.artist + " - " + currAudio.title
-            titleView.text = correctTitle
+            titleView.text = "${currAudio.artist} - ${currAudio.title}"
         }
         val mins = currAudio.duration / 1000 / 60
         val secs = currAudio.duration / 1000 % 60

@@ -1,8 +1,10 @@
 package com.kmem.myplayer.data
 
 import android.content.Context
-import androidx.room.*
-import kotlinx.coroutines.internal.synchronized
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 
 /**
  * Класс, который содержит базу данных.

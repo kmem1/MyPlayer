@@ -1,14 +1,8 @@
 package com.kmem.myplayer.utils
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import java.io.File
-import java.io.FileDescriptor
-import java.text.SimpleDateFormat
-import java.util.*
 
 /**
  *  Вспомогающий класс, который отвечает за получение метаданных из mp3 файла.

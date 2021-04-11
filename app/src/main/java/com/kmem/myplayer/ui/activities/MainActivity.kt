@@ -1,6 +1,5 @@
 package com.kmem.myplayer.ui.activities
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -8,10 +7,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentPagerAdapter
 import androidx.viewpager.widget.ViewPager
+import com.kmem.myplayer.R
 import com.kmem.myplayer.ui.fragments.MainPlayerFragment
 import com.kmem.myplayer.ui.fragments.PlaylistFragment
-import com.kmem.myplayer.R
-import com.kmem.myplayer.service.PlayerService
 
 /**
  *  Главная активность приложения. Она запускается при открытии приложения.
@@ -25,7 +23,6 @@ class MainActivity : AppCompatActivity() {
         val pagerAdapter = SectionsPagerAdapter(supportFragmentManager)
         val viewPager = findViewById<View>(R.id.pager) as ViewPager
         viewPager.adapter = pagerAdapter
-        startService(Intent(baseContext, PlayerService::class.java))
     }
 
     private inner class SectionsPagerAdapter(fm: FragmentManager?) :
