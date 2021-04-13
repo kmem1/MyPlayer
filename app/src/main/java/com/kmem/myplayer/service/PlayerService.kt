@@ -141,6 +141,7 @@ class PlayerService : Service() {
             applicationContext,
             MediaButtonReceiver::class.java
         )
+
         mediaSession!!.setMediaButtonReceiver(
             PendingIntent.getBroadcast(
                 applicationContext,
@@ -324,7 +325,7 @@ class PlayerService : Service() {
 
             refreshNotificationAndForegroundStatus(currentState)
 
-            //stopSelf()
+            stopSelf()
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
