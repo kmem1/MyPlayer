@@ -23,6 +23,7 @@ import java.io.File
  */
 
 class PlaylistViewModel(application: Application) : AndroidViewModel(application) {
+
     private val _audios = MutableLiveData<ArrayList<Track>>()
     val audios: LiveData<ArrayList<Track>> = _audios
 
@@ -38,6 +39,7 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /*
     suspend fun addTracks(paths: ArrayList<String>): ArrayList<Track> {
         val tracks = ArrayList<Track>()
         withContext(Dispatchers.IO) {
@@ -58,6 +60,9 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
         return tracks
     }
 
+     */
+
+    /*
     private fun createTrackFromPath(path: String, position: Int): Track {
         val uri = Uri.fromFile(File(path))
         val helper = MetadataHelper(getApplication(), uri)
@@ -68,6 +73,8 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
             title = fileName
         return Track(position, title, artist, uri, helper.getDuration(), fileName)
     }
+
+     */
 
     suspend fun deleteTracks(tracks: ArrayList<Track>) {
         withContext(Dispatchers.IO) {
@@ -97,4 +104,10 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
     private fun <T> MutableLiveData<T>.notifyObservers() {
         this.value = this.value
     }
+
+    interface Repository {
+        fun addTracks(tracks: ArrayList<Track>)
+        fun deleteTracks(tracks: ArrayList<Track>)
+    }
+
 }

@@ -12,25 +12,26 @@ import kotlinx.coroutines.withContext
  */
 
 class MusicRepository(val context: Context) {
+
     private var data: ArrayList<Track> = ArrayList()
-    private var shuffle_data: ArrayList<Track> = ArrayList() // additional copy for shuffle mode
-    private var shuffle_stack: ArrayList<Track> = ArrayList() // stack trace for shuffle mode
-    private var stack_index = 0
+    private var shuffleData: ArrayList<Track> = ArrayList() // additional copy for shuffle mode
+    private var shuffleStack: ArrayList<Track> = ArrayList() // stack trace for shuffle mode
+    private var stackIndex = 0
     private var maxIndex = 0
     var currentUri: Uri? = null
     var currentItemIndex = 0
     var shuffle = false
         set(value) {
             field = value
-            val isAlreadyShuffled = shuffle_stack.size == 1 && shuffle_stack[0].uri == currentUri
+            val isAlreadyShuffled = shuffleStack.size == 1 && shuffleStack[0].uri == currentUri
             if (value && !isAlreadyShuffled) {
-                shuffle_data.clear()
-                shuffle_data.addAll(data)
-                shuffle_data.shuffle()
-                shuffle_stack.clear()
-                shuffle_stack.add(data.first { it.uri == currentUri })
-                shuffle_data.remove(data.first { it.uri == currentUri })
-                stack_index = 0
+                shuffleData.clear()
+                shuffleData.addAll(data)
+                shuffleData.shuffle()
+                shuffleStack.clear()
+                shuffleStack.add(data.first { it.uri == currentUri })
+                shuffleData.remove(data.first { it.uri == currentUri })
+                stackIndex = 0
             }
         }
 
@@ -55,12 +56,12 @@ class MusicRepository(val context: Context) {
             data.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
             maxIndex = data.lastIndex
 
-            val isAlreadyShuffled = shuffle_stack.size == 1 && shuffle_stack[0].uri == currentUri
+            val isAlreadyShuffled = shuffleStack.size == 1 && shuffleStack[0].uri == currentUri
             if (shuffle || isAlreadyShuffled) {
-                shuffle_data.clear()
-                shuffle_data.addAll(data)
-                shuffle_data.removeAll(shuffle_stack)
-                shuffle_data.shuffle()
+                shuffleData.clear()
+                shuffleData.addAll(data)
+                shuffleData.removeAll(shuffleStack)
+                shuffleData.shuffle()
             }
         }
     }
@@ -82,16 +83,16 @@ class MusicRepository(val context: Context) {
             currentItemIndex = indexOfCurrentTrack
         }
 
-        val isAlreadyShuffled = shuffle_stack.size == 1 && shuffle_stack[0].uri == currentUri
+        val isAlreadyShuffled = shuffleStack.size == 1 && shuffleStack[0].uri == currentUri
         if (shuffle || isAlreadyShuffled) {
-            shuffle_data.removeAll(tracks)
-            shuffle_stack.removeAll(tracks)
-            indexOfCurrentTrack = shuffle_stack.indexOfFirst { it.uri == currentUri }
+            shuffleData.removeAll(tracks)
+            shuffleStack.removeAll(tracks)
+            indexOfCurrentTrack = shuffleStack.indexOfFirst { it.uri == currentUri }
             if (indexOfCurrentTrack == -1) {
-                if (stack_index > shuffle_stack.lastIndex)
-                    stack_index = shuffle_stack.lastIndex
+                if (stackIndex > shuffleStack.lastIndex)
+                    stackIndex = shuffleStack.lastIndex
             } else {
-                stack_index = indexOfCurrentTrack
+                stackIndex = indexOfCurrentTrack
             }
         }
     }
@@ -111,14 +112,14 @@ class MusicRepository(val context: Context) {
 
     private fun getNextOnShuffle(): Track {
         val track: Track?
-        if (stack_index == shuffle_stack.size - 1) {
-            if (shuffle_data.isEmpty())
+        if (stackIndex == shuffleStack.size - 1) {
+            if (shuffleData.isEmpty())
                 refreshShuffleData()
-            track = shuffle_data.removeAt(0)
-            shuffle_stack.add(track)
-            stack_index++
+            track = shuffleData.removeAt(0)
+            shuffleStack.add(track)
+            stackIndex++
         } else {
-            track = shuffle_stack[++stack_index]
+            track = shuffleStack[++stackIndex]
         }
 
         currentUri = track.uri
@@ -128,11 +129,11 @@ class MusicRepository(val context: Context) {
     }
 
     private fun refreshShuffleData() {
-        shuffle_data.addAll(shuffle_stack)
-        shuffle_data.shuffle()
-        shuffle_stack.clear()
-        shuffle_stack.add(shuffle_data.removeAt(0))
-        stack_index = 0
+        shuffleData.addAll(shuffleStack)
+        shuffleData.shuffle()
+        shuffleStack.clear()
+        shuffleStack.add(shuffleData.removeAt(0))
+        stackIndex = 0
     }
 
     fun getPrevious(): Track? {
@@ -147,9 +148,9 @@ class MusicRepository(val context: Context) {
     }
 
     private fun getPreviousOnShuffle(): Track {
-        if (stack_index != 0) stack_index--
+        if (stackIndex != 0) stackIndex--
 
-        val track = shuffle_stack[stack_index]
+        val track = shuffleStack[stackIndex]
 
         currentUri = track.uri
         currentItemIndex = data.indexOf(track)
@@ -160,14 +161,14 @@ class MusicRepository(val context: Context) {
     fun getAtPosition(pos: Int): Track {
         val track = data[pos]
         if (shuffle) {
-            if (track in shuffle_stack) {
-                shuffle_stack.remove(track)
-                shuffle_stack.add(track)
+            if (track in shuffleStack) {
+                shuffleStack.remove(track)
+                shuffleStack.add(track)
             } else {
-                shuffle_data.remove(track)
-                shuffle_stack.add(track)
+                shuffleData.remove(track)
+                shuffleStack.add(track)
             }
-            stack_index = shuffle_stack.lastIndex
+            stackIndex = shuffleStack.lastIndex
         }
 
         currentItemIndex = pos
@@ -185,9 +186,10 @@ class MusicRepository(val context: Context) {
 
     fun isEnded(): Boolean {
         return if (shuffle) {
-            shuffle_data.isEmpty()
+            shuffleData.isEmpty()
         } else {
             currentItemIndex == maxIndex
         }
     }
+
 }

@@ -12,6 +12,7 @@ import android.net.Uri
  */
 
 class MetadataHelper(context: Context, val uri: Uri) {
+
     private val mmr: MediaMetadataRetriever = MediaMetadataRetriever()
 
     init {
@@ -30,4 +31,5 @@ class MetadataHelper(context: Context, val uri: Uri) {
         val durationString = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
         return Integer.parseInt(durationString ?: "0").toLong()
     }
+
 }

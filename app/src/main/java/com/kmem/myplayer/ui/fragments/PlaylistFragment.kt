@@ -16,21 +16,26 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.service.PlayerService
-import com.kmem.myplayer.ui.activities.FileChooserActivity
 import com.kmem.myplayer.ui.adapters.PlaylistAdapter
 import com.kmem.myplayer.ui.helpers.PlaylistItemTouchHelperCallback
 import com.kmem.myplayer.viewmodels.PlaylistViewModel
@@ -44,6 +49,12 @@ import kotlinx.coroutines.*
  */
 
 class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
+
+    companion object {
+        const val PERMISSION_STRING = Manifest.permission.READ_EXTERNAL_STORAGE
+        const val PERMISSION_CODE = 596
+    }
+
     private var audios: ArrayList<Track> = ArrayList()
     private lateinit var list: RecyclerView
     private lateinit var touchHelper: ItemTouchHelper
@@ -58,11 +69,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     override var currentUri: Uri = Uri.EMPTY
     override var deleteMode: Boolean = false
     override var selectedCheckboxesPositions: ArrayList<Int> = ArrayList()
-
-    companion object {
-        const val PERMISSION_STRING = Manifest.permission.READ_EXTERNAL_STORAGE
-        const val PERMISSION_CODE = 596
-    }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreateView(
@@ -80,15 +86,16 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         val touchCallback = PlaylistItemTouchHelperCallback(adapter)
         touchHelper = ItemTouchHelper(touchCallback)
         touchHelper.attachToRecyclerView(list)
-        adapter.setListener(this@PlaylistFragment)
+        adapter.listener = this@PlaylistFragment
         list.adapter = adapter
         list.layoutManager = LinearLayoutManager(context)
 
         val addButton = layout.findViewById<ImageButton>(R.id.add_tracks)
+
+
         addButton.setOnClickListener {
-            val intent = Intent(context, FileChooserActivity::class.java)
             if (checkPermission())
-                startActivityForResult(intent, 1)
+                findNavController().navigate(R.id.action_playlist_to_filechooser)
             else
                 requestPermission()
         }
@@ -167,14 +174,9 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             BIND_AUTO_CREATE
         )
 
+        setupToolbar()
 
         return layout
-    }
-
-    private val audiosObserver = Observer<ArrayList<Track>> { newAudios ->
-        audios.clear()
-        audios.addAll(newAudios)
-        list.adapter?.notifyDataSetChanged()
     }
 
     override fun onDestroy() {
@@ -188,9 +190,10 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     }
 
 
+    /*
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (data == null) return
-        val paths = data.getStringArrayListExtra(FileChooserActivity.PATHS) ?: ArrayList<String>()
+        val paths = data.getStringArrayListExtra(FileChooserFragment.PATHS) ?: ArrayList<String>()
         if (paths.size == 0) return
         MainScope().launch {
             val loadingSpinner = layout.findViewById<ProgressBar>(R.id.progress_bar)
@@ -199,6 +202,33 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             playerService?.addNewTracks()
             loadingSpinner.visibility = View.GONE
         }
+    }
+     */
+
+    private fun setupToolbar() {
+        val toolbar = layout.findViewById<Toolbar>(R.id.toolbar)
+        val drawer = activity?.findViewById<DrawerLayout>(R.id.drawer)
+        (activity as AppCompatActivity).setSupportActionBar(toolbar)
+        (activity as AppCompatActivity).supportActionBar?.setDisplayShowTitleEnabled(false)
+        drawer?.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+
+        val toggle = ActionBarDrawerToggle(
+            activity,
+            drawer,
+            toolbar,
+            R.string.navigation_drawer_open,
+            R.string.navigation_drawer_close
+        )
+
+        drawer?.addDrawerListener(toggle)
+        toggle.isDrawerIndicatorEnabled = true
+        toggle.syncState()
+    }
+
+    private val audiosObserver = Observer<ArrayList<Track>> { newAudios ->
+        audios.clear()
+        audios.addAll(newAudios)
+        list.adapter?.notifyDataSetChanged()
     }
 
     private val uriObserver = Observer<Uri> { newUri ->
@@ -254,8 +284,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             if (grantResults.isNotEmpty() &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED
             ) {
-                val intent = Intent(context, FileChooserActivity::class.java)
-                startActivityForResult(intent, 1)
+                findNavController().navigate(R.id.action_playlist_to_filechooser)
             } else {
                 Toast.makeText(
                     context,
@@ -266,6 +295,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         }
 
     }
+
 
     override fun onClick(position: Int) {
         val bundle = Bundle()
@@ -285,4 +315,5 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             }
         }
     }
+
 }

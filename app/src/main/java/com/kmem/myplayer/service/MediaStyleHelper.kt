@@ -37,4 +37,5 @@ class MediaStyleHelper {
             return builder
         }
     }
+
 }

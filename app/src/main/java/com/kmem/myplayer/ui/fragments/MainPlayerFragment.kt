@@ -14,19 +14,26 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.SeekBar
+import androidx.appcompat.widget.Toolbar
+import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
-import android.widget.TextView
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
+import androidx.navigation.findNavController
+import androidx.navigation.fragment.findNavController
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.setupActionBarWithNavController
+import com.google.android.material.navigation.NavigationView
 import com.kmem.myplayer.R
 import com.kmem.myplayer.service.PlayerService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
 
 /**
  *  Фрагмент экрана состояния плеера.
@@ -35,6 +42,7 @@ import kotlinx.coroutines.launch
  */
 
 class MainPlayerFragment : Fragment() {
+
     private val FROM_ALPHA = 0.3f
     private val TO_ALPHA = 1f
 
@@ -176,6 +184,12 @@ class MainPlayerFragment : Fragment() {
             playerService?.repeatMode = repeated
         }
 
+        val toPlaylistButton = layout.findViewById<ImageButton>(R.id.to_playlist_button)
+        toPlaylistButton.setOnClickListener {
+            findNavController().navigate(R.id.action_player_to_playlist)
+        }
+
+        setupToolbar()
         setupDurationBarListener()
 
         return layout
@@ -215,6 +229,25 @@ class MainPlayerFragment : Fragment() {
         }
         durationBarJob?.cancel()
         activity?.unbindService(serviceConnection!!)
+    }
+
+    private fun setupToolbar() {
+        val toolbar = layout.findViewById<Toolbar>(R.id.toolbar)
+        val drawer = activity?.findViewById<DrawerLayout>(R.id.drawer)
+        (activity as AppCompatActivity).setSupportActionBar(toolbar)
+        drawer?.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+
+        val toggle = ActionBarDrawerToggle(
+            activity,
+            drawer,
+            toolbar,
+            R.string.navigation_drawer_open,
+            R.string.navigation_drawer_close
+        )
+
+        drawer?.addDrawerListener(toggle)
+        toggle.isDrawerIndicatorEnabled = true
+        toggle.syncState()
     }
 
     private val metadataObserver = Observer<MediaMetadataCompat> { newMetadata ->

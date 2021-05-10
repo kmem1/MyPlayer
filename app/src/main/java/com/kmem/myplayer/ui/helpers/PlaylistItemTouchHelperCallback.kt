@@ -9,7 +9,9 @@ import androidx.recyclerview.widget.RecyclerView
  *      Адаптер RecyclerView.
  */
 
-class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapter) : ItemTouchHelper.Callback() {
+class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapter)
+    : ItemTouchHelper.Callback() {
+
     private var dragFrom = -1
     private var dragTo = -1
 
@@ -60,4 +62,5 @@ class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapt
         dragFrom = -1
         dragTo = -1
     }
+
 }

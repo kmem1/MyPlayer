@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/nav_player">
+
+    <fragment
+        android:id="@+id/nav_player"
+        android:name="com.kmem.myplayer.ui.fragments.MainPlayerFragment"
+        android:label="fragment_main_player"
+        tools:layout="@layout/fragment_main_player" >
+        <action
+            android:id="@+id/action_player_to_playlist"
+            app:destination="@id/nav_playlist" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_playlist"
+        android:name="com.kmem.myplayer.ui.fragments.PlaylistFragment"
+        android:label="fragment_playlist"
+        tools:layout="@layout/fragment_playlist" >
+        <action
+            android:id="@+id/action_playlist_to_filechooser"
+            app:destination="@id/nav_filechooser" />
+        <argument
+            android:name="playlist_id"
+            app:argType="integer"
+            android:defaultValue="0" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_filechooser"
+        android:name="com.kmem.myplayer.ui.fragments.FileChooserFragment"
+        android:label="FileChooserFragment" >
+        <action
+            android:id="@+id/action_filechooser_to_playlist"
+            app:destination="@id/nav_playlist" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_effects"
+        android:name="com.kmem.myplayer.ui.fragments.SoundEffectsFragment"
+        android:label="SoundEffectsFragment" />
+
+</navigation>

@@ -9,13 +9,14 @@ import androidx.room.PrimaryKey
  * Класс, который содержит таблицу БД.
  */
 
-@Entity(tableName = "playlist")
+@Entity(tableName = "track_in_playlist", primaryKeys = ["uri", "playlist_id"])
 data class Track(
+        val uri: Uri,
+        @ColumnInfo(name = "playlist_id")
+        val playlistId: Int,
         var position: Int,
         val title: String,
         val artist: String,
-        @PrimaryKey
-        val uri: Uri,
         val duration: Long,
         @ColumnInfo(name = "file_name")
         val fileName: String)

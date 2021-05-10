@@ -14,4 +14,10 @@
     <string name="zero_seconds">0:00</string>
 
     <string name="on_permission_denied">Need permission to get files from the storage</string>
+
+    <string name="navigation_drawer_open">Drawer Open</string>
+    <string name="navigation_drawer_close">Drawer Closed</string>
+    
+    <string name="nav_home">Home</string>
+    <string name="nav_effects">Sound Effects</string>
 </resources>

@@ -1,186 +1,211 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.fragments.MainPlayerFragment">
+    android:orientation="vertical">
 
-    <ImageView
-        android:id="@+id/prev_button"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginEnd="20dp"
-        android:background="#FFFFFF"
-        android:src="@drawable/baseline_keyboard_arrow_left_24"
-        app:layout_constraintBottom_toBottomOf="@+id/play_button"
-        app:layout_constraintEnd_toStartOf="@+id/play_button"
-        app:layout_constraintTop_toTopOf="@+id/play_button"
-        app:layout_constraintWidth_percent="0.12" />
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/white">
 
-    <ImageView
-        android:id="@+id/play_button"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:src="@drawable/baseline_play_arrow_24"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.1"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.97"
-        app:layout_constraintWidth_percent="0.2" />
+        <ImageButton
+            android:id="@+id/to_playlist_button"
+            android:layout_width="?attr/actionBarSize"
+            android:layout_height="?attr/actionBarSize"
+            android:src="@drawable/outline_playlist_play_24"
+            android:layout_gravity="end"
+            android:background="@null"
+            android:scaleType="fitXY"
+            android:scaleX="0.6"
+            android:scaleY="0.6"/>
 
-    <ImageView
-        android:id="@+id/next_button"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="20dp"
-        android:src="@drawable/baseline_keyboard_arrow_right_24"
-        app:layout_constraintBottom_toBottomOf="@+id/play_button"
-        app:layout_constraintStart_toEndOf="@+id/play_button"
-        app:layout_constraintTop_toTopOf="@+id/play_button"
-        app:layout_constraintWidth_percent="0.12" />
+    </androidx.appcompat.widget.Toolbar>
 
-    <LinearLayout
-        android:id="@+id/titles_container"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toTopOf="@+id/duration_bar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/card_view"
-        app:layout_constraintWidth_percent="0.7">
-
-        <TextView
-            android:id="@+id/track_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:ellipsize="marquee"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:marqueeRepeatLimit="marquee_forever"
-            android:scrollHorizontally="true"
-            android:singleLine="true"
-            android:textAppearance="@style/TextAppearance.AppCompat.Large"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            app:layout_constraintBottom_toTopOf="@+id/play_button"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.501"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/card_view"
-            app:layout_constraintVertical_bias="0.100000024" />
-
-        <TextView
-            android:id="@+id/artist"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:ellipsize="marquee"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:marqueeRepeatLimit="marquee_forever"
-            android:scrollHorizontally="true"
-            android:singleLine="true"
-            android:textAppearance="@style/TextAppearance.AppCompat.Large"
-            android:textSize="18sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/group" />
-
-    </LinearLayout>
-
-
-    <androidx.cardview.widget.CardView xmlns:card_view="http://schemas.android.com/apk/res-auto"
-        android:id="@+id/card_view"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.120000005"
-        app:layout_constraintWidth_percent="0.82"
-        card_view:cardCornerRadius="10dp"
-        card_view:cardElevation="12dp">
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".ui.fragments.MainPlayerFragment">
 
         <ImageView
-            android:id="@+id/album_image"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="fitXY"
-            android:src="@drawable/without_album" />
-    </androidx.cardview.widget.CardView>
+            android:id="@+id/prev_button"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginEnd="20dp"
+            android:background="#FFFFFF"
+            android:src="@drawable/baseline_keyboard_arrow_left_24"
+            app:layout_constraintBottom_toBottomOf="@+id/play_button"
+            app:layout_constraintEnd_toStartOf="@+id/play_button"
+            app:layout_constraintTop_toTopOf="@+id/play_button"
+            app:layout_constraintWidth_percent="0.12" />
 
-    <SeekBar
-        android:id="@+id/duration_bar"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:max="1000000"
-        app:layout_constraintBottom_toTopOf="@+id/play_button"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/card_view"
-        app:layout_constraintVertical_bias="0.92"
-        app:layout_constraintWidth_percent="0.75" />
+        <ImageView
+            android:id="@+id/play_button"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:src="@drawable/baseline_play_arrow_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHeight_percent="0.1"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.97"
+            app:layout_constraintWidth_percent="0.2" />
 
-    <TextView
-        android:id="@+id/curr_duration"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:text="0:00"
-        app:layout_constraintBottom_toBottomOf="@+id/duration_bar"
-        app:layout_constraintEnd_toStartOf="@+id/duration_bar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/duration_bar" />
+        <ImageView
+            android:id="@+id/next_button"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="20dp"
+            android:src="@drawable/baseline_keyboard_arrow_right_24"
+            app:layout_constraintBottom_toBottomOf="@+id/play_button"
+            app:layout_constraintStart_toEndOf="@+id/play_button"
+            app:layout_constraintTop_toTopOf="@+id/play_button"
+            app:layout_constraintWidth_percent="0.12" />
 
-    <TextView
-        android:id="@+id/max_duration"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:text="0:00"
-        app:layout_constraintBottom_toBottomOf="@+id/duration_bar"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/duration_bar"
-        app:layout_constraintTop_toTopOf="@+id/duration_bar" />
+        <LinearLayout
+            android:id="@+id/titles_container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toTopOf="@+id/duration_bar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/card_view"
+            app:layout_constraintWidth_percent="0.7">
 
-    <ImageButton
-        android:id="@+id/shuffle_button"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:background="@drawable/baseline_shuffle_enabled_24"
-        android:scaleType="fitCenter"
-        app:layout_constraintBottom_toBottomOf="@+id/prev_button"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toStartOf="@+id/prev_button"
-        app:layout_constraintHorizontal_bias="0.25"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/prev_button"
-        app:layout_constraintVertical_bias="0.511"
-        app:layout_constraintWidth_percent="0.1" />
+            <TextView
+                android:id="@+id/track_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:ellipsize="marquee"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:scrollHorizontally="true"
+                android:singleLine="true"
+                android:textAppearance="@style/TextAppearance.AppCompat.Large"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toTopOf="@+id/play_button"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.501"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/card_view"
+                app:layout_constraintVertical_bias="0.100000024" />
 
-    <ImageButton
-        android:id="@+id/repeat_button"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:background="@null"
-        android:scaleType="fitCenter"
-        android:src="@drawable/baseline_repeat_24"
-        android:tint="#5C5C5C"
-        app:layout_constraintBottom_toBottomOf="@+id/next_button"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.75"
-        app:layout_constraintStart_toEndOf="@+id/next_button"
-        app:layout_constraintTop_toTopOf="@+id/next_button"
-        app:layout_constraintVertical_bias="0.526"
-        app:layout_constraintWidth_percent="0.1" />
+            <TextView
+                android:id="@+id/artist"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:ellipsize="marquee"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:scrollHorizontally="true"
+                android:singleLine="true"
+                android:textAppearance="@style/TextAppearance.AppCompat.Large"
+                android:textSize="18sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/group" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        </LinearLayout>
+
+        <androidx.cardview.widget.CardView xmlns:card_view="http://schemas.android.com/apk/res-auto"
+            android:id="@+id/card_view"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.120000005"
+            app:layout_constraintWidth_percent="0.82"
+            card_view:cardCornerRadius="10dp"
+            card_view:cardElevation="12dp">
+
+            <ImageView
+                android:id="@+id/album_image"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitXY"
+                android:src="@drawable/without_album" />
+        </androidx.cardview.widget.CardView>
+
+        <SeekBar
+            android:id="@+id/duration_bar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:max="1000000"
+            app:layout_constraintBottom_toTopOf="@+id/play_button"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/card_view"
+            app:layout_constraintVertical_bias="0.92"
+            app:layout_constraintWidth_percent="0.75" />
+
+        <TextView
+            android:id="@+id/curr_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="0:00"
+            app:layout_constraintBottom_toBottomOf="@+id/duration_bar"
+            app:layout_constraintEnd_toStartOf="@+id/duration_bar"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/duration_bar" />
+
+        <TextView
+            android:id="@+id/max_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="0:00"
+            app:layout_constraintBottom_toBottomOf="@+id/duration_bar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/duration_bar"
+            app:layout_constraintTop_toTopOf="@+id/duration_bar" />
+
+        <ImageButton
+            android:id="@+id/shuffle_button"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/baseline_shuffle_enabled_24"
+            android:scaleType="fitCenter"
+            app:layout_constraintBottom_toBottomOf="@+id/prev_button"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintEnd_toStartOf="@+id/prev_button"
+            app:layout_constraintHorizontal_bias="0.25"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/prev_button"
+            app:layout_constraintVertical_bias="0.511"
+            app:layout_constraintWidth_percent="0.1" />
+
+        <ImageButton
+            android:id="@+id/repeat_button"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@null"
+            android:scaleType="fitCenter"
+            android:src="@drawable/baseline_repeat_24"
+            android:tint="#5C5C5C"
+            app:layout_constraintBottom_toBottomOf="@+id/next_button"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.75"
+            app:layout_constraintStart_toEndOf="@+id/next_button"
+            app:layout_constraintTop_toTopOf="@+id/next_button"
+            app:layout_constraintVertical_bias="0.526"
+            app:layout_constraintWidth_percent="0.1" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</LinearLayout>

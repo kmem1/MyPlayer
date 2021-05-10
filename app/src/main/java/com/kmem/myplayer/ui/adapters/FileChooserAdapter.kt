@@ -9,10 +9,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
-import com.kmem.myplayer.ui.activities.FileChooserActivity
+import com.kmem.myplayer.ui.fragments.FileChooserFragment
 
 /**
- *  Адаптер для элемента RecyclerView в FileChooserActivity.
+ *  Адаптер для элемента RecyclerView в FileChooserFragment.
  *  Определяет поведение RecyclerView.
  *  Отвечает за заполнение элемента списка информацией.
  *  Отвечает за взаимодействие элементов списка с пользователем.
@@ -21,16 +21,14 @@ import com.kmem.myplayer.ui.activities.FileChooserActivity
  *      ArrayList с деревьями файлов.
  */
 
-class FileChooserAdapter(private val treeList: ArrayList<FileChooserActivity.FileTreeComponent>) : RecyclerView.Adapter<FileChooserAdapter.ViewHolder>() {
-    private var listener: Listener? = null
+class FileChooserAdapter(private val treeList: ArrayList<FileChooserFragment.FileTreeComponent>)
+    : RecyclerView.Adapter<FileChooserAdapter.ViewHolder>() {
+
+    var listener: Listener? = null
 
     interface Listener {
         fun onClick(position: Int)
         fun onCheckboxClick(position: Int, value: Boolean)
-    }
-
-    fun setListener(listener: Listener?) {
-        this.listener = listener
     }
 
     inner class ViewHolder(val fileView: LinearLayout) : RecyclerView.ViewHolder(fileView)

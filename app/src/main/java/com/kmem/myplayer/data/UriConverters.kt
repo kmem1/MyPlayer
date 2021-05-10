@@ -8,6 +8,7 @@ import androidx.room.TypeConverter
  */
 
 class UriConverters {
+
     @TypeConverter
     fun fromString(value: String): Uri {
         return Uri.parse(value)
@@ -17,4 +18,5 @@ class UriConverters {
     fun toString(uri: Uri): String {
         return uri.toString()
     }
+
 }

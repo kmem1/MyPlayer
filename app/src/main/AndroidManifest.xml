@@ -32,13 +32,11 @@
             </intent-filter>
         </receiver>
 
-        <activity android:name="com.kmem.myplayer.ui.activities.FileChooserActivity"
-            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar">
-        </activity>
         <activity
-            android:name="com.kmem.myplayer.ui.activities.MainActivity"
+            android:name="com.kmem.myplayer.ui.MainActivity"
             android:launchMode="singleTask"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MyPlayer">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

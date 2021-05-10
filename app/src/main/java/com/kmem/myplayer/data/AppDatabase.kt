@@ -9,10 +9,12 @@ import androidx.room.TypeConverters
 /**
  * Класс, который содержит базу данных.
  * */
-@Database(entities = [Track::class], version = 1)
+@Database(entities = [Track::class, Playlist::class], version = 1)
 @TypeConverters(UriConverters::class)
 abstract class AppDatabase : RoomDatabase() {
+
     abstract fun trackDao() : TrackDao
+    abstract fun playlistDao() : PlaylistDao
 
     companion object {
         private var instance: AppDatabase? = null
@@ -26,4 +28,5 @@ abstract class AppDatabase : RoomDatabase() {
             return Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME).build()
         }
     }
+
 }

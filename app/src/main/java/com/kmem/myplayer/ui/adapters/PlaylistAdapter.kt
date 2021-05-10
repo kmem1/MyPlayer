@@ -24,9 +24,10 @@ import kotlin.collections.ArrayList
  *      ArrayList с песнями.
  */
 
-class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapter<PlaylistAdapter.ViewHolder>()
-                                                                                    , ItemTouchHelperAdapter {
-    private var listener: Listener? = null
+class PlaylistAdapter(private val audios: ArrayList<Track>) :
+    RecyclerView.Adapter<PlaylistAdapter.ViewHolder>(), ItemTouchHelperAdapter {
+
+    var listener: Listener? = null
 
     interface Listener {
         var currentUri: Uri
@@ -35,10 +36,6 @@ class PlaylistAdapter(private val audios: ArrayList<Track>): RecyclerView.Adapte
 
         fun onClick(position: Int)
         fun updatePositions()
-    }
-
-    fun setListener(listener: Listener?) {
-        this.listener = listener
     }
 
     class ViewHolder(val audioView: LinearLayout) : RecyclerView.ViewHolder(audioView)

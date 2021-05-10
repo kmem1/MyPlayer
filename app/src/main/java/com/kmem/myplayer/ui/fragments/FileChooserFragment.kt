@@ -1,15 +1,22 @@
-package com.kmem.myplayer.ui.activities
+package com.kmem.myplayer.ui.fragments
 
-import android.content.Intent
+import android.content.Context
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.drawerlayout.widget.DrawerLayout
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
@@ -23,54 +30,73 @@ import java.io.File
 import java.io.Serializable
 
 /**
- *  Активность экрана добавления песен.
- *  Отвечает за графические элементы и взаимодействие с пользователем.
+ *  Fragment that allows to browse mp3 files and add them to playlist.
  */
 
-class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
+class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
+
     companion object {
         const val PATHS = "paths"
     }
 
-    private val list by lazy { findViewById<RecyclerView>(R.id.fileList) }
     private val currentDirs: ArrayList<FileTreeComponent> = ArrayList()
     private lateinit var model: FileChooserViewModel
 
     private var scope = CoroutineScope(Dispatchers.Main + Job())
     private lateinit var loadingSpinner: ProgressBar
+    private lateinit var layout: View
+    private lateinit var mActivity: AppCompatActivity
+    private lateinit var list: RecyclerView
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_file_chooser)
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        mActivity = context as AppCompatActivity
+    }
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        layout = inflater.inflate(R.layout.fragment_file_chooser, container, false)
 
         model = ViewModelProvider(this).get(FileChooserViewModel::class.java)
 
-        model.currentDirs.observe(this, currentDirsObserver)
-        model.currentDirName.observe(this, currentDirNameObserver)
-        model.currentPath.observe(this, currentPathObserver)
+        model.currentDirs.observe(viewLifecycleOwner, currentDirsObserver)
+        model.currentDirName.observe(viewLifecycleOwner, currentDirNameObserver)
+        model.currentPath.observe(viewLifecycleOwner, currentPathObserver)
 
-        loadingSpinner = findViewById<ProgressBar>(R.id.progress_bar)
+        loadingSpinner = layout.findViewById(R.id.progress_bar)
         loadingSpinner.visibility = View.GONE
 
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayShowTitleEnabled(false)
-
-        val previousPathButton = findViewById<ImageButton>(R.id.prev_path_button)
+        val previousPathButton = layout.findViewById<ImageButton>(R.id.prev_path_button)
         previousPathButton.setOnClickListener { scope.launch { model.openPreviousDir() } }
-        val homeButton = findViewById<ImageButton>(R.id.home_button)
+        val homeButton = layout.findViewById<ImageButton>(R.id.home_button)
         homeButton.setOnClickListener { model.setHomeDirs() }
-        val selectAllButton = findViewById<ImageButton>(R.id.select_all)
+        val selectAllButton = layout.findViewById<ImageButton>(R.id.select_all)
         selectAllButton.setOnClickListener { model.selectAllCurrent() }
-        val loadButton = findViewById<ImageButton>(R.id.load_files)
+        val loadButton = layout.findViewById<ImageButton>(R.id.load_files)
         loadButton.setOnClickListener {
-            sendPaths(model.loadFiles())
+            //sendPaths(model.loadFiles())
+            findNavController().navigate(R.id.action_filechooser_to_playlist)
         }
 
+        list = layout.findViewById(R.id.fileList)
         val adapter = FileChooserAdapter(currentDirs)
-        adapter.setListener(this)
-        list.layoutManager = LinearLayoutManager(this)
+        adapter.listener = this
+        list.layoutManager = LinearLayoutManager(mActivity)
         list.adapter = adapter
+
+        setupToolbar()
+
+        return layout
+    }
+
+    private fun setupToolbar() {
+        val toolbar = layout.findViewById<Toolbar>(R.id.toolbar)
+        val drawer = activity?.findViewById<DrawerLayout>(R.id.drawer)
+        drawer?.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+        (activity as AppCompatActivity).setSupportActionBar(toolbar)
+        (activity as AppCompatActivity).supportActionBar?.setDisplayShowTitleEnabled(false)
     }
 
     private val currentDirsObserver = object : Observer<ArrayList<FileTreeComponent>> {
@@ -90,7 +116,7 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
     }
 
     private val currentDirNameObserver = Observer<String> { t ->
-        val dirNameView = findViewById<TextView>(R.id.dir_name)
+        val dirNameView = layout.findViewById<TextView>(R.id.dir_name)
         if (t == "")
             dirNameView.text = resources.getString(R.string.home_screen)
         else
@@ -98,16 +124,18 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
     }
 
     private val currentPathObserver = Observer<String> { t ->
-        val pathView = findViewById<TextView>(R.id.dir_path)
+        val pathView = layout.findViewById<TextView>(R.id.dir_path)
         pathView.text = t
     }
 
+    /*
     private fun sendPaths(paths: ArrayList<String>) {
         intent = Intent()
         intent.putStringArrayListExtra(PATHS, paths)
         setResult(RESULT_OK, intent)
         finish()
     }
+     */
 
     override fun onClick(position: Int) {
         scope.launch {
@@ -189,10 +217,10 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
             }
 
             for (childModel in childModels) {
-                if (childModel.file.isDirectory) {
-                    node = DirectoryNode(this, childModel)
+                node = if (childModel.file.isDirectory) {
+                    DirectoryNode(this, childModel)
                 } else {
-                    node = FileNode(this, childModel)
+                    FileNode(this, childModel)
                 }
                 node.isSelected = this.isSelected
                 childs.add(node)
@@ -208,14 +236,18 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
         }
 
         override fun checkChilds() {
-            if (childs.all { it.isSelected }) {
-                isSelected = true
-            } else if (childs.any { it.isSelected || it.hasSelectedChilds }) {
-                hasSelectedChilds = true
-                isSelected = false
-            } else {
-                isSelected = false
-                hasSelectedChilds = false
+            when {
+                childs.all { it.isSelected } -> {
+                    isSelected = true
+                }
+                childs.any { it.isSelected || it.hasSelectedChilds } -> {
+                    hasSelectedChilds = true
+                    isSelected = false
+                }
+                else -> {
+                    isSelected = false
+                    hasSelectedChilds = false
+                }
             }
             parent?.checkChilds()
         }
@@ -241,4 +273,5 @@ class FileChooserActivity : AppCompatActivity(), FileChooserAdapter.Listener {
 
     // file wrapper for custom name
     data class FileModel(val name: String, val file: File) : Serializable
+
 }

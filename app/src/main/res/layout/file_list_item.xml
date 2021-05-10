@@ -27,4 +27,5 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:text="Test" />
+
 </LinearLayout>

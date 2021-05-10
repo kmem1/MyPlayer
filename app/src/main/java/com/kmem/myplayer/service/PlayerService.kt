@@ -34,8 +34,9 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.*
 import com.kmem.myplayer.R
+import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.data.Track
-import com.kmem.myplayer.ui.activities.MainActivity
+import com.kmem.myplayer.ui.MainActivity
 import kotlinx.coroutines.*
 import java.util.*
 import kotlin.collections.ArrayList
@@ -46,6 +47,7 @@ import kotlin.collections.ArrayList
  */
 
 class PlayerService : Service() {
+
     companion object {
         const val ACTION_PLAY_AT_POSITION = "play_at_position"
         const val EXTRA_POSITION = "extra_position"
@@ -53,7 +55,6 @@ class PlayerService : Service() {
         private const val NOTIFICATION_DEFAULT_CHANNEL_ID = "default_channel"
         private const val INACTIVITY_TIMEOUT = 600_000L // 10 mins
     }
-
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private val metadataBuilder = MediaMetadataCompat.Builder()
@@ -78,7 +79,7 @@ class PlayerService : Service() {
     private var extractorsFactory: ExtractorsFactory? = null
     private var dataSourceFactory: DataSource.Factory? = null
 
-    private var musicRepository: MusicRepository? = null
+    private var musicRepository: Repository = MusicRepository.getInstance()
 
     private var inactivityCheckJob: Job? = null
 
@@ -114,11 +115,13 @@ class PlayerService : Service() {
                 .build()
         }
 
+        /*
         MainScope().launch {
             withContext(Dispatchers.IO) {
                 musicRepository = MusicRepository(context)
             }
         }
+         */
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
@@ -679,4 +682,18 @@ class PlayerService : Service() {
 
         return builder.build()
     }
+
+    interface Repository {
+        var shuffle: Boolean
+
+        fun updatePositions()
+        fun addNewTracks()
+        fun deleteTracks(tracks: ArrayList<Track>)
+        fun getCurrent(): Track?
+        fun getNext(): Track?
+        fun getPrevious(): Track?
+        fun getAtPosition(position: Int): Track?
+        fun isEnded(): Boolean
+    }
+
 }

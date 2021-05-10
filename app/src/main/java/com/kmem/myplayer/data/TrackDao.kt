@@ -8,7 +8,8 @@ import androidx.room.*
 
 @Dao
 interface TrackDao {
-    @Query("SELECT * FROM playlist ORDER BY position")
+
+    @Query("SELECT * FROM track_in_playlist ORDER BY position")
     fun getTracks(): List<Track>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -25,4 +26,5 @@ interface TrackDao {
 
     @Delete
     fun deleteAll(tracks: List<Track>)
+
 }
