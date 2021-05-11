@@ -80,13 +80,18 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
     }
 
     override fun onNavItemClicked(destId: Int) {
-        findNavController(R.id.nav_host_fragment_content_main).navigate(destId)
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        val inclusive = destId == R.id.nav_player
+        navController.popBackStack(R.id.nav_player, inclusive)
+        navController.navigate(destId)
         findViewById<DrawerLayout>(R.id.drawer).closeDrawers()
     }
 
     override fun onPlaylistClicked(playlistId: Int) {
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        navController.popBackStack(R.id.nav_player, false)
         val bundle = bundleOf("playlist_id" to playlistId)
-        findNavController(R.id.nav_host_fragment_content_main).navigate(R.id.nav_playlist, bundle)
+        navController.navigate(R.id.nav_playlist, bundle)
         findViewById<DrawerLayout>(R.id.drawer).closeDrawers()
     }
 

@@ -34,7 +34,7 @@ class PlaylistAdapter(private val audios: ArrayList<Track>) :
         var deleteMode: Boolean
         var selectedCheckboxesPositions: ArrayList<Int>
 
-        fun onClick(position: Int)
+        fun onAudioClick(position: Int)
         fun updatePositions()
     }
 
@@ -81,7 +81,7 @@ class PlaylistAdapter(private val audios: ArrayList<Track>) :
         else
             deleteCheckbox.visibility = View.GONE
 
-        audioView.setOnClickListener { listener?.onClick(position) }
+        audioView.setOnClickListener { listener?.onAudioClick(position) }
 
         audioView.isSelected = currAudio.uri == listener?.currentUri
     }

@@ -137,20 +137,19 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
     }
      */
 
-    override fun onClick(position: Int) {
+    override fun onListItemClick(position: Int) {
         scope.launch {
-            val isDirectory = currentDirs[position].isDirectory
-            if (isDirectory) {
+            if (currentDirs[position].isDirectory) {
                 loadingSpinner.visibility = View.VISIBLE
                 currentDirs.clear()
                 list.adapter?.notifyDataSetChanged()
-            }
 
-            model.onClick(position)
+                model.onListItemClick(position)
 
-            if (isDirectory) {
                 loadingSpinner.visibility = View.GONE
                 list.scrollToPosition(0)
+            } else {
+                model.onListItemClick(position)
             }
         }
     }

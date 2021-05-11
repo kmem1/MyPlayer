@@ -102,7 +102,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
             openDir(prevDir)
     }
 
-    suspend fun onClick(position: Int) {
+    suspend fun onListItemClick(position: Int) {
         val currChild = currentTree!!.childAt(position)
         if (currChild!!.isDirectory)
             openDir(currChild)

@@ -27,7 +27,7 @@ class FileChooserAdapter(private val treeList: ArrayList<FileChooserFragment.Fil
     var listener: Listener? = null
 
     interface Listener {
-        fun onClick(position: Int)
+        fun onListItemClick(position: Int)
         fun onCheckboxClick(position: Int, value: Boolean)
     }
 
@@ -53,7 +53,7 @@ class FileChooserAdapter(private val treeList: ArrayList<FileChooserFragment.Fil
 
         val fileName = fileView.findViewById<View>(R.id.file_name) as TextView
         fileName.text = fileModel.name
-        fileView.setOnClickListener { listener?.onClick(position) }
+        fileView.setOnClickListener { listener?.onListItemClick(position) }
         val checkbox = fileView.findViewById<CheckBox>(R.id.checkbox)
         checkbox.isChecked = treeList[position].isSelected
         checkbox.setOnClickListener { buttonView ->

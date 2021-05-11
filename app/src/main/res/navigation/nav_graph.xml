@@ -35,7 +35,9 @@
         android:label="FileChooserFragment" >
         <action
             android:id="@+id/action_filechooser_to_playlist"
-            app:destination="@id/nav_playlist" />
+            app:destination="@id/nav_playlist"
+            app:popUpTo="@id/nav_playlist"
+            app:popUpToInclusive="true" />
     </fragment>
 
     <fragment

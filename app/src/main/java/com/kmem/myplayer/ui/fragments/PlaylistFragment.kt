@@ -297,7 +297,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     }
 
 
-    override fun onClick(position: Int) {
+    override fun onAudioClick(position: Int) {
         val bundle = Bundle()
         bundle.putInt(PlayerService.EXTRA_POSITION, position)
         mediaController?.transportControls?.sendCustomAction(
