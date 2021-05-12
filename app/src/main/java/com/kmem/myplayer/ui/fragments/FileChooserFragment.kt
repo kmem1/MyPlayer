@@ -76,7 +76,7 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
         selectAllButton.setOnClickListener { model.selectAllCurrent() }
         val loadButton = layout.findViewById<ImageButton>(R.id.load_files)
         loadButton.setOnClickListener {
-            //sendPaths(model.loadFiles())
+            model.loadFilesToRepository()
             findNavController().navigate(R.id.action_filechooser_to_playlist)
         }
 

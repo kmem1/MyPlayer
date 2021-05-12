@@ -48,6 +48,16 @@ import kotlin.collections.ArrayList
 
 class PlayerService : Service() {
 
+    interface Repository {
+        var shuffle: Boolean
+
+        fun getCurrent(): Track?
+        fun getNext(): Track?
+        fun getPrevious(): Track?
+        fun getAtPosition(position: Int): Track?
+        fun isEnded(): Boolean
+    }
+
     companion object {
         const val ACTION_PLAY_AT_POSITION = "play_at_position"
         const val EXTRA_POSITION = "extra_position"
@@ -79,7 +89,7 @@ class PlayerService : Service() {
     private var extractorsFactory: ExtractorsFactory? = null
     private var dataSourceFactory: DataSource.Factory? = null
 
-    private var musicRepository: Repository = MusicRepository.getInstance()
+    private var musicRepository: Repository = MusicRepository.getInstance(context)
 
     private var inactivityCheckJob: Job? = null
 
@@ -176,6 +186,7 @@ class PlayerService : Service() {
         exoPlayer?.release()
     }
 
+    /*
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     suspend fun updatePositions() {
         musicRepository?.updatePositions()
@@ -184,6 +195,7 @@ class PlayerService : Service() {
     suspend fun addNewTracks() {
         musicRepository?.addNewTracks()
     }
+     */
 
     fun setShuffle(value: Boolean) {
         musicRepository?.shuffle = value
@@ -193,6 +205,7 @@ class PlayerService : Service() {
         return musicRepository?.shuffle ?: false
     }
 
+    /*
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     suspend fun deleteTracks(tracks: ArrayList<Track>) {
         musicRepository?.deleteTracks(tracks)
@@ -207,6 +220,7 @@ class PlayerService : Service() {
                 mediaSessionCallback.onPause()
         }
     }
+     */
 
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
         var currentState = PlaybackStateCompat.STATE_STOPPED
@@ -681,19 +695,6 @@ class PlayerService : Service() {
         builder.setChannelId(NOTIFICATION_DEFAULT_CHANNEL_ID)
 
         return builder.build()
-    }
-
-    interface Repository {
-        var shuffle: Boolean
-
-        fun updatePositions()
-        fun addNewTracks()
-        fun deleteTracks(tracks: ArrayList<Track>)
-        fun getCurrent(): Track?
-        fun getNext(): Track?
-        fun getPrevious(): Track?
-        fun getAtPosition(position: Int): Track?
-        fun isEnded(): Boolean
     }
 
 }

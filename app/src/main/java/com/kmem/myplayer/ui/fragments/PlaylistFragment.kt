@@ -27,6 +27,7 @@ import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
@@ -34,6 +35,7 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
+import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.adapters.PlaylistAdapter
@@ -50,11 +52,19 @@ import kotlinx.coroutines.*
 
 class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
+    interface Repository {
+        val tracks: LiveData<ArrayList<Track>>
+
+        fun deleteTracks(tracks: ArrayList<Track>)
+        fun updatePositions(tracks: ArrayList<Track>)
+    }
+
     companion object {
         const val PERMISSION_STRING = Manifest.permission.READ_EXTERNAL_STORAGE
         const val PERMISSION_CODE = 596
     }
 
+    private val repository: Repository = MusicRepository.getInstance(requireContext())
     private var audios: ArrayList<Track> = ArrayList()
     private lateinit var list: RecyclerView
     private lateinit var touchHelper: ItemTouchHelper
@@ -79,7 +89,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
         model = ViewModelProvider(requireActivity()).get(PlaylistViewModel::class.java)
 
-        model.audios.observe(viewLifecycleOwner, audiosObserver)
+        repository.tracks.observe(viewLifecycleOwner, audiosObserver)
 
         list = layout.findViewById<View>(R.id.songs_list) as RecyclerView
         val adapter = PlaylistAdapter(audios)
@@ -91,7 +101,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         list.layoutManager = LinearLayoutManager(context)
 
         val addButton = layout.findViewById<ImageButton>(R.id.add_tracks)
-
 
         addButton.setOnClickListener {
             if (checkPermission())
@@ -120,7 +129,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             // async update Database
             MainScope().launch {
                 model.deleteTracks(tracks)
-                playerService?.deleteTracks(tracks)
             }
         }
 
@@ -296,7 +304,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     }
 
-
     override fun onAudioClick(position: Int) {
         val bundle = Bundle()
         bundle.putInt(PlayerService.EXTRA_POSITION, position)
@@ -311,7 +318,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         MainScope().launch {
             withContext(Dispatchers.IO) {
                 model.updatePositions(audios)
-                playerService?.updatePositions()
             }
         }
     }

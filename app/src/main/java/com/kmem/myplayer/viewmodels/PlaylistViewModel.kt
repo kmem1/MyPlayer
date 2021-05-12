@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.kmem.myplayer.data.AppDatabase
+import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.utils.MetadataHelper
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,14 @@ import java.io.File
  */
 
 class PlaylistViewModel(application: Application) : AndroidViewModel(application) {
+
+
+    interface Repository {
+        val tracks: LiveData<ArrayList<Track>>
+
+        fun deleteTracks(tracks: ArrayList<Track>)
+        fun updatePositions(tracks: ArrayList<Track>)
+    }
 
     private val _audios = MutableLiveData<ArrayList<Track>>()
     val audios: LiveData<ArrayList<Track>> = _audios
@@ -103,11 +112,6 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
 
     private fun <T> MutableLiveData<T>.notifyObservers() {
         this.value = this.value
-    }
-
-    interface Repository {
-        fun addTracks(tracks: ArrayList<Track>)
-        fun deleteTracks(tracks: ArrayList<Track>)
     }
 
 }
