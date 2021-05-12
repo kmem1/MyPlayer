@@ -20,4 +20,7 @@
     
     <string name="nav_home">Home</string>
     <string name="nav_effects">Sound Effects</string>
+    
+    <string name="create_playlist_dialog_title">CreatePlaylist</string>
+    <string name="create_playlist_dialog_hint">Playlist Name</string>
 </resources>

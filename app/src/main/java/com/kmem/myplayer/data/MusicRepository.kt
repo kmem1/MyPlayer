@@ -8,7 +8,6 @@ import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.fragments.PlaylistFragment
 import com.kmem.myplayer.utils.MetadataHelper
 import com.kmem.myplayer.viewmodels.FileChooserViewModel
-import com.kmem.myplayer.viewmodels.PlaylistViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -26,10 +25,7 @@ class MusicRepository : PlayerService.Repository,
         fun getInstance(context: Context): MusicRepository {
             return instance ?: MusicRepository().also {
                 instance = it
-                it._tracks.value = ArrayList()
-                MainScope().launch {
-                    it._tracks.value?.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
-                }
+                it.init(context)
             }
         }
     }
@@ -59,12 +55,33 @@ class MusicRepository : PlayerService.Repository,
         TODO("Not yet implemented")
     }
 
-    override fun deleteTracks(tracks: ArrayList<Track>) {
-        TODO("Not yet implemented")
+    override fun deleteTracks(context: Context, tracks: ArrayList<Track>) {
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                AppDatabase.getInstance(context).trackDao().deleteAll(tracks)
+            }
+
+            _tracks.value?.removeAll(tracks)
+            val size = _tracks.value?.size ?: 0
+            // update positions
+            for (i in 0 until size) {
+                _tracks.value!![i].position = i
+            }
+
+            withContext(Dispatchers.IO) {
+                AppDatabase.getInstance(context).trackDao().updateAll(_tracks.value!!)
+            }
+
+            _tracks.notifyObservers()
+        }
     }
 
-    override fun updatePositions(tracks: ArrayList<Track>) {
-        TODO("Not yet implemented")
+    override fun updatePositions(context: Context, tracks: ArrayList<Track>) {
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                AppDatabase.getInstance(context).trackDao().updateAll(tracks)
+            }
+        }
     }
 
     override fun addTracks(context: Context, paths: ArrayList<String>) {
@@ -98,6 +115,15 @@ class MusicRepository : PlayerService.Repository,
             title = fileName
 
         return Track(uri, 0, position, title, artist, helper.getDuration(), fileName)
+    }
+
+    private fun init(context: Context) {
+        _tracks.value = ArrayList()
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                _tracks.value?.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+            }
+        }
     }
 
     private fun <T> MutableLiveData<T>.notifyObservers() {

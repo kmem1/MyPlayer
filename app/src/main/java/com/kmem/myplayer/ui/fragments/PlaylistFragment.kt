@@ -2,6 +2,7 @@ package com.kmem.myplayer.ui.fragments
 
 import android.Manifest
 import android.content.ComponentName
+import android.content.Context
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
@@ -16,9 +17,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageButton
-import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBarDrawerToggle
@@ -40,7 +39,6 @@ import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.adapters.PlaylistAdapter
 import com.kmem.myplayer.ui.helpers.PlaylistItemTouchHelperCallback
-import com.kmem.myplayer.viewmodels.PlaylistViewModel
 import kotlinx.coroutines.*
 
 /**
@@ -55,8 +53,8 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     interface Repository {
         val tracks: LiveData<ArrayList<Track>>
 
-        fun deleteTracks(tracks: ArrayList<Track>)
-        fun updatePositions(tracks: ArrayList<Track>)
+        fun deleteTracks(context: Context, tracks: ArrayList<Track>)
+        fun updatePositions(context: Context, tracks: ArrayList<Track>)
     }
 
     companion object {
@@ -64,8 +62,8 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         const val PERMISSION_CODE = 596
     }
 
-    private val repository: Repository = MusicRepository.getInstance(requireContext())
     private var audios: ArrayList<Track> = ArrayList()
+    private lateinit var repository: Repository
     private lateinit var list: RecyclerView
     private lateinit var touchHelper: ItemTouchHelper
     private lateinit var layout: View
@@ -74,7 +72,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     private var mediaController: MediaControllerCompat? = null
     private var callback: MediaControllerCompat.Callback? = null
     private var serviceConnection: ServiceConnection? = null
-    private lateinit var model: PlaylistViewModel
 
     override var currentUri: Uri = Uri.EMPTY
     override var deleteMode: Boolean = false
@@ -87,8 +84,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     ): View {
         layout = inflater.inflate(R.layout.fragment_playlist, container, false)
 
-        model = ViewModelProvider(requireActivity()).get(PlaylistViewModel::class.java)
-
+        repository = MusicRepository.getInstance(requireContext())
         repository.tracks.observe(viewLifecycleOwner, audiosObserver)
 
         list = layout.findViewById<View>(R.id.songs_list) as RecyclerView
@@ -126,10 +122,8 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             deleteMode = false
             onDeleteModeChanged()
 
-            // async update Database
-            MainScope().launch {
-                model.deleteTracks(tracks)
-            }
+            repository.deleteTracks(requireContext(), tracks)
+
         }
 
         selectAllButton.setOnClickListener {
@@ -315,11 +309,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun updatePositions() {
-        MainScope().launch {
-            withContext(Dispatchers.IO) {
-                model.updatePositions(audios)
-            }
-        }
+        repository.updatePositions(requireContext(), audios)
     }
 
 }

@@ -6,7 +6,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
-import com.kmem.myplayer.ui.Playlist
+import com.kmem.myplayer.data.Playlist
 
 class NavPlaylistsAdapter(val playlists: ArrayList<Playlist>) : RecyclerView.Adapter<NavPlaylistsAdapter.ViewHolder>() {
 
@@ -33,7 +33,7 @@ class NavPlaylistsAdapter(val playlists: ArrayList<Playlist>) : RecyclerView.Ada
         val playlistNameView = view.findViewById<TextView>(R.id.playlist_name)
         playlistNameView.text = currentPlaylist.name
 
-        view.setOnClickListener { listener?.onPlaylistClicked(currentPlaylist.id) }
+        view.setOnClickListener { listener?.onPlaylistClicked(currentPlaylist.playlistId) }
     }
 
 }

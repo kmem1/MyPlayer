@@ -1,12 +1,17 @@
 package com.kmem.myplayer.ui
 
+import android.app.AlertDialog
+import android.app.Dialog
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentPagerAdapter
@@ -19,10 +24,17 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.navigation.NavigationView
 import com.kmem.myplayer.R
+import com.kmem.myplayer.data.AppDatabase
+import com.kmem.myplayer.data.Playlist
 import com.kmem.myplayer.ui.adapters.NavListAdapter
 import com.kmem.myplayer.ui.adapters.NavPlaylistsAdapter
 import com.kmem.myplayer.ui.fragments.MainPlayerFragment
 import com.kmem.myplayer.ui.fragments.PlaylistFragment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.lang.IllegalStateException
 
 /**
  *  Главная активность приложения. Она запускается при открытии приложения.
@@ -32,32 +44,8 @@ import com.kmem.myplayer.ui.fragments.PlaylistFragment
 class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsAdapter.Listener {
 
     private val navItemList: ArrayList<Screen> = arrayListOf(Screen.Home, Screen.SoundEffects)
-    private val navPlaylists: ArrayList<Playlist> = arrayListOf(
-        Playlist(1, "Playlist 1"),
-        Playlist(2, "Playlist 2"),
-        Playlist(3, "Playlist 3"),
-        Playlist(4, "Playlist 4"),
-        Playlist(1, "Playlist 1"),
-        Playlist(2, "Playlist 2"),
-        Playlist(3, "Playlist 3"),
-        Playlist(4, "Playlist 4"),
-        Playlist(1, "Playlist 1"),
-        Playlist(2, "Playlist 2"),
-        Playlist(3, "Playlist 3"),
-        Playlist(4, "Playlist 4"),
-        Playlist(1, "Playlist 1"),
-        Playlist(2, "Playlist 2"),
-        Playlist(3, "Playlist 3"),
-        Playlist(4, "Playlist 4"),
-        Playlist(1, "Playlist 1"),
-        Playlist(2, "Playlist 2"),
-        Playlist(3, "Playlist 3"),
-        Playlist(4, "Playlist 4"),
-        Playlist(1, "Playlist 1"),
-        Playlist(2, "Playlist 2"),
-        Playlist(3, "Playlist 3"),
-        Playlist(4, "Playlist 4")
-    )
+    private val navPlaylists: ArrayList<Playlist> = ArrayList()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,13 +58,20 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         navList.layoutManager = LinearLayoutManager(this)
         navList.isNestedScrollingEnabled = false
 
-        val playlistsList = findViewById<RecyclerView>(R.id.playlists_list)
-        val navPlaylistsAdapter = NavPlaylistsAdapter(navPlaylists)
-        navPlaylistsAdapter.listener = this
-        playlistsList.adapter = navPlaylistsAdapter
-        playlistsList.layoutManager = LinearLayoutManager(this)
-        playlistsList.isNestedScrollingEnabled = false
 
+        MainScope().launch {
+            navPlaylists.addAll(getPlaylistsFromDatabase())
+            val playlistsList = findViewById<RecyclerView>(R.id.playlists_list)
+            val navPlaylistsAdapter = NavPlaylistsAdapter(navPlaylists)
+            navPlaylistsAdapter.listener = this@MainActivity
+            playlistsList.adapter = navPlaylistsAdapter
+            playlistsList.layoutManager = LinearLayoutManager(this@MainActivity)
+            playlistsList.isNestedScrollingEnabled = false
+        }
+
+        findViewById<Button>(R.id.create_playlist_button).setOnClickListener {
+            CreatePlaylistDialogFragment().show(supportFragmentManager, "Create Playlist")
+        }
     }
 
     override fun onNavItemClicked(destId: Int) {
@@ -95,6 +90,16 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         findViewById<DrawerLayout>(R.id.drawer).closeDrawers()
     }
 
+    private suspend fun getPlaylistsFromDatabase(): ArrayList<Playlist> {
+        val playlists: ArrayList<Playlist> = ArrayList()
+        withContext(Dispatchers.IO) {
+            playlists.addAll(
+                AppDatabase.getInstance(this@MainActivity).playlistDao().getPlaylists()
+            )
+        }
+        return playlists
+    }
+
 }
 
 sealed class Screen(
@@ -106,4 +111,35 @@ sealed class Screen(
     object SoundEffects : Screen(R.id.nav_effects, R.string.nav_effects, R.drawable.baseline_play_arrow_24)
 }
 
-data class Playlist(val id: Int, val name: String)
+class CreatePlaylistDialogFragment : DialogFragment() {
+
+    internal lateinit var listener: CreatePlaylistDialogListener
+
+    interface CreatePlaylistDialogListener {
+        fun onDialogPositiveClick(dialog: DialogFragment)
+        fun onDialogNegativeClick(dialog: DialogFragment)
+    }
+
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        return activity?.let {
+            val builder = AlertDialog.Builder(it)
+
+            val inflater = requireActivity().layoutInflater
+
+            builder.setView(inflater.inflate(R.layout.dialog_create_playlist, null))
+                .setTitle(R.string.create_playlist_dialog_title)
+                .setPositiveButton(android.R.string.ok,
+                    DialogInterface.OnClickListener { dialog, id ->
+
+                    })
+                .setNegativeButton(android.R.string.cancel,
+                    DialogInterface.OnClickListener { dialog, id ->
+
+                    })
+
+
+            builder.create()
+        } ?: throw IllegalStateException("Activity cannot be null")
+    }
+
+}
