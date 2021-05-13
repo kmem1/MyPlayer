@@ -2,10 +2,13 @@ package com.kmem.myplayer.ui
 
 import android.app.AlertDialog
 import android.app.Dialog
+import android.content.Context
 import android.content.DialogInterface
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
+import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
@@ -34,6 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.lang.ClassCastException
 import java.lang.IllegalStateException
 
 /**
@@ -41,7 +45,8 @@ import java.lang.IllegalStateException
  *  Отвечает за запуск остальных экранов приложения.
  */
 
-class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsAdapter.Listener {
+class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsAdapter.Listener,
+                                        CreatePlaylistDialogFragment.CreatePlaylistDialogListener {
 
     private val navItemList: ArrayList<Screen> = arrayListOf(Screen.Home, Screen.SoundEffects)
     private val navPlaylists: ArrayList<Playlist> = ArrayList()
@@ -60,7 +65,9 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
 
 
         MainScope().launch {
-            navPlaylists.addAll(getPlaylistsFromDatabase())
+            withContext(Dispatchers.IO) {
+                navPlaylists.addAll(getPlaylistsFromDatabase())
+            }
             val playlistsList = findViewById<RecyclerView>(R.id.playlists_list)
             val navPlaylistsAdapter = NavPlaylistsAdapter(navPlaylists)
             navPlaylistsAdapter.listener = this@MainActivity
@@ -70,7 +77,7 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         }
 
         findViewById<Button>(R.id.create_playlist_button).setOnClickListener {
-            CreatePlaylistDialogFragment().show(supportFragmentManager, "Create Playlist")
+            showCreatePlaylistDialog()
         }
     }
 
@@ -100,6 +107,26 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         return playlists
     }
 
+    private suspend fun addPlaylistToDatabase(playlistName: String) {
+        withContext(Dispatchers.IO) {
+            AppDatabase.getInstance(this@MainActivity).playlistDao().insertPlaylist()
+        }
+    }
+
+    private fun showCreatePlaylistDialog() {
+        CreatePlaylistDialogFragment().show(supportFragmentManager, "Create Playlist")
+    }
+
+    override fun onDialogPositiveClick(dialog: DialogFragment, playlistName: String) {
+        val name = if (playlistName == "") "New Playlist" else playlistName
+
+        Toast.makeText(this, name, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDialogNegativeClick(dialog: DialogFragment) {
+
+    }
+
 }
 
 sealed class Screen(
@@ -116,27 +143,41 @@ class CreatePlaylistDialogFragment : DialogFragment() {
     internal lateinit var listener: CreatePlaylistDialogListener
 
     interface CreatePlaylistDialogListener {
-        fun onDialogPositiveClick(dialog: DialogFragment)
+        fun onDialogPositiveClick(dialog: DialogFragment, playlistName: String)
         fun onDialogNegativeClick(dialog: DialogFragment)
+    }
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+
+        try {
+            listener = context as CreatePlaylistDialogListener
+        } catch (e: ClassCastException) {
+            throw ClassCastException((context.toString() +
+                    " must implement CreatePlaylistDialogListener"))
+        }
     }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         return activity?.let {
             val builder = AlertDialog.Builder(it)
 
-            val inflater = requireActivity().layoutInflater
+            val view = requireActivity().layoutInflater.inflate(
+                R.layout.dialog_create_playlist,
+                null
+            )
 
-            builder.setView(inflater.inflate(R.layout.dialog_create_playlist, null))
+            builder.setView(view)
                 .setTitle(R.string.create_playlist_dialog_title)
                 .setPositiveButton(android.R.string.ok,
                     DialogInterface.OnClickListener { dialog, id ->
-
+                        val name = view.findViewById<EditText>(R.id.playlist_name).text.toString()
+                        listener.onDialogPositiveClick(this, name)
                     })
                 .setNegativeButton(android.R.string.cancel,
                     DialogInterface.OnClickListener { dialog, id ->
-
+                        listener.onDialogNegativeClick(this)
                     })
-
 
             builder.create()
         } ?: throw IllegalStateException("Activity cannot be null")
