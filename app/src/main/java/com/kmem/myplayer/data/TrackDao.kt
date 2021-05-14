@@ -10,8 +10,8 @@ import androidx.room.*
 @Dao
 interface TrackDao {
 
-    @Query("SELECT * FROM track_in_playlist ORDER BY position")
-    fun getTracks(): List<Track>
+    @Query("SELECT * FROM track_in_playlist WHERE playlist_id = :playlistId ORDER BY position")
+    fun getTracksFromPlaylist(playlistId: Int): List<Track>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertTrack(track: Track)
