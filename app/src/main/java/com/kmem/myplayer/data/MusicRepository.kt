@@ -99,7 +99,9 @@ class MusicRepository : PlayerService.Repository,
                 }
                 AppDatabase.getInstance(context).trackDao().insertAll(tracks)
                 _tracks.value?.clear()
-                _tracks.value?.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+                _tracks.value?.addAll(
+                    AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0)
+                )
             }
             _tracks.notifyObservers()
         }
@@ -121,7 +123,9 @@ class MusicRepository : PlayerService.Repository,
         _tracks.value = ArrayList()
         MainScope().launch {
             withContext(Dispatchers.IO) {
-                _tracks.value?.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+                _tracks.value?.addAll(
+                    AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0)
+                )
             }
         }
     }

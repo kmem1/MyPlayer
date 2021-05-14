@@ -153,7 +153,7 @@ sealed class Screen(
 
 class CreatePlaylistDialogFragment : DialogFragment() {
 
-    internal lateinit var listener: CreatePlaylistDialogListener
+    private lateinit var listener: CreatePlaylistDialogListener
 
     interface CreatePlaylistDialogListener {
         fun onDialogPositiveClick(dialog: DialogFragment, playlistName: String)

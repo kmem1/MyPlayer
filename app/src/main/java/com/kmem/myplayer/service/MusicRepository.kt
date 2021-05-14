@@ -36,14 +36,14 @@ class MusicRepository(val context: Context) {
         }
 
     init {
-        data.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+        data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
         maxIndex = data.lastIndex
     }
 
     suspend fun updatePositions() {
         withContext(Dispatchers.IO) {
             data.clear()
-            data.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+            data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
             currentItemIndex = data.indexOfFirst { it.uri == currentUri }
             if (currentItemIndex == -1)
                 currentItemIndex = 0
@@ -53,7 +53,7 @@ class MusicRepository(val context: Context) {
     suspend fun addNewTracks() {
         withContext(Dispatchers.IO) {
             data.clear()
-            data.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+            data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
             maxIndex = data.lastIndex
 
             val isAlreadyShuffled = shuffleStack.size == 1 && shuffleStack[0].uri == currentUri
@@ -70,7 +70,7 @@ class MusicRepository(val context: Context) {
         data.clear()
 
         withContext(Dispatchers.IO) {
-            data.addAll(AppDatabase.getInstance(context).trackDao().getTracks())
+            data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
         }
 
         maxIndex = data.lastIndex

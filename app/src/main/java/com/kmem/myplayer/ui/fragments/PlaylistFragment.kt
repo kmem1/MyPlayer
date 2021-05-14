@@ -67,6 +67,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     private lateinit var list: RecyclerView
     private lateinit var touchHelper: ItemTouchHelper
     private lateinit var layout: View
+    private var playlistId: Int = 0
     private var playerService: PlayerService? = null
     private var playerServiceBinder: PlayerService.PlayerServiceBinder? = null
     private var mediaController: MediaControllerCompat? = null
@@ -87,6 +88,8 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         repository = MusicRepository.getInstance(requireContext())
         repository.tracks.observe(viewLifecycleOwner, audiosObserver)
 
+        playlistId = arguments?.getInt("playlist_id") ?: 0
+
         list = layout.findViewById<View>(R.id.songs_list) as RecyclerView
         val adapter = PlaylistAdapter(audios)
         val touchCallback = PlaylistItemTouchHelperCallback(adapter)
@@ -97,46 +100,14 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         list.layoutManager = LinearLayoutManager(context)
 
         val addButton = layout.findViewById<ImageButton>(R.id.add_tracks)
-
-        addButton.setOnClickListener {
-            if (checkPermission())
-                findNavController().navigate(R.id.action_playlist_to_filechooser)
-            else
-                requestPermission()
-        }
-
         val removeButton = layout.findViewById<ImageButton>(R.id.remove_tracks)
         val deleteTracksButton = layout.findViewById<ImageButton>(R.id.delete_tracks)
         val selectAllButton = layout.findViewById<ImageButton>(R.id.select_all)
-        removeButton.setOnClickListener {
-            deleteMode = !deleteMode
-            onDeleteModeChanged()
-            list.adapter?.notifyDataSetChanged()
-        }
 
-        deleteTracksButton.setOnClickListener {
-            val tracks = ArrayList<Track>()
-            for (pos in selectedCheckboxesPositions)
-                tracks.add(audios[pos])
-
-            deleteMode = false
-            onDeleteModeChanged()
-
-            repository.deleteTracks(requireContext(), tracks)
-
-        }
-
-        selectAllButton.setOnClickListener {
-            if (selectedCheckboxesPositions.size == audios.size) {
-                selectedCheckboxesPositions.clear()
-            } else {
-                for (pos in 0 until audios.size)
-                    if (pos !in selectedCheckboxesPositions)
-                        selectedCheckboxesPositions.add(pos)
-            }
-
-            list.adapter?.notifyDataSetChanged()
-        }
+        addButton.setOnClickListener(addButtonClickListener)
+        removeButton.setOnClickListener(removeButtonClickListener)
+        deleteTracksButton.setOnClickListener(deleteTracksButtonClickListener)
+        selectAllButton.setOnClickListener(selectAllButtonClickListener)
 
         callback = object : MediaControllerCompat.Callback() {
             override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
@@ -169,7 +140,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             }
         }
 
-
         activity?.bindService(
             Intent(activity, PlayerService::class.java),
             serviceConnection!!,
@@ -190,22 +160,53 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         }
         activity?.unbindService(serviceConnection!!)
     }
-
-
-    /*
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (data == null) return
-        val paths = data.getStringArrayListExtra(FileChooserFragment.PATHS) ?: ArrayList<String>()
-        if (paths.size == 0) return
-        MainScope().launch {
-            val loadingSpinner = layout.findViewById<ProgressBar>(R.id.progress_bar)
-            loadingSpinner.visibility = View.VISIBLE
-            model.addTracks(paths)
-            playerService?.addNewTracks()
-            loadingSpinner.visibility = View.GONE
-        }
+    
+    private val removeButtonClickListener = View.OnClickListener {
+        deleteMode = !deleteMode
+        onDeleteModeChanged()
+        list.adapter?.notifyDataSetChanged()
     }
-     */
+
+    private val deleteTracksButtonClickListener = View.OnClickListener {
+        val tracks = ArrayList<Track>()
+        for (pos in selectedCheckboxesPositions)
+            tracks.add(audios[pos])
+
+        deleteMode = false
+        onDeleteModeChanged()
+
+        repository.deleteTracks(requireContext(), tracks)
+    }
+
+    private val selectAllButtonClickListener = View.OnClickListener {
+        if (selectedCheckboxesPositions.size == audios.size) {
+            selectedCheckboxesPositions.clear()
+        } else {
+            for (pos in 0 until audios.size)
+                if (pos !in selectedCheckboxesPositions)
+                    selectedCheckboxesPositions.add(pos)
+        }
+
+        list.adapter?.notifyDataSetChanged()
+    }
+
+    private val addButtonClickListener = View.OnClickListener {
+        if (checkPermission())
+            findNavController().navigate(R.id.action_playlist_to_filechooser)
+        else
+            requestPermission()
+    }
+
+    private val audiosObserver = Observer<ArrayList<Track>> { newAudios ->
+        audios.clear()
+        audios.addAll(newAudios)
+        list.adapter?.notifyDataSetChanged()
+    }
+
+    private val uriObserver = Observer<Uri> { newUri ->
+        currentUri = newUri
+        list.adapter?.notifyDataSetChanged()
+    }
 
     private fun setupToolbar() {
         val toolbar = layout.findViewById<Toolbar>(R.id.toolbar)
@@ -225,17 +226,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         drawer?.addDrawerListener(toggle)
         toggle.isDrawerIndicatorEnabled = true
         toggle.syncState()
-    }
-
-    private val audiosObserver = Observer<ArrayList<Track>> { newAudios ->
-        audios.clear()
-        audios.addAll(newAudios)
-        list.adapter?.notifyDataSetChanged()
-    }
-
-    private val uriObserver = Observer<Uri> { newUri ->
-        currentUri = newUri
-        list.adapter?.notifyDataSetChanged()
     }
 
     private fun checkPermission(): Boolean {
@@ -311,5 +301,20 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     override fun updatePositions() {
         repository.updatePositions(requireContext(), audios)
     }
+
+    /*
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (data == null) return
+        val paths = data.getStringArrayListExtra(FileChooserFragment.PATHS) ?: ArrayList<String>()
+        if (paths.size == 0) return
+        MainScope().launch {
+            val loadingSpinner = layout.findViewById<ProgressBar>(R.id.progress_bar)
+            loadingSpinner.visibility = View.VISIBLE
+            model.addTracks(paths)
+            playerService?.addNewTracks()
+            loadingSpinner.visibility = View.GONE
+        }
+    }
+ */
 
 }
