@@ -48,7 +48,10 @@ import java.lang.IllegalStateException
 class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsAdapter.Listener,
                                         CreatePlaylistDialogFragment.CreatePlaylistDialogListener {
 
+    private lateinit var navList: RecyclerView
     private val navItemList: ArrayList<Screen> = arrayListOf(Screen.Home, Screen.SoundEffects)
+
+    private lateinit var playlistsList: RecyclerView
     private val navPlaylists: ArrayList<Playlist> = ArrayList()
 
 
@@ -56,7 +59,7 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val navList = findViewById<RecyclerView>(R.id.nav_list)
+        navList = findViewById<RecyclerView>(R.id.nav_list)
         val navListAdapter = NavListAdapter(navItemList)
         navListAdapter.listener = this
         navList.adapter = navListAdapter
@@ -68,7 +71,7 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
             withContext(Dispatchers.IO) {
                 navPlaylists.addAll(getPlaylistsFromDatabase())
             }
-            val playlistsList = findViewById<RecyclerView>(R.id.playlists_list)
+            playlistsList = findViewById<RecyclerView>(R.id.playlists_list)
             val navPlaylistsAdapter = NavPlaylistsAdapter(navPlaylists)
             navPlaylistsAdapter.listener = this@MainActivity
             playlistsList.adapter = navPlaylistsAdapter
@@ -97,6 +100,21 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         findViewById<DrawerLayout>(R.id.drawer).closeDrawers()
     }
 
+    override fun onDialogPositiveClick(dialog: DialogFragment, playlistName: String) {
+        val name = if (playlistName == "") "New Playlist" else playlistName
+
+        MainScope().launch {
+            addPlaylistToDatabase(name)
+            updateNavPlaylists()
+        }
+    }
+
+    override fun onDialogNegativeClick(dialog: DialogFragment) { }
+
+    private fun showCreatePlaylistDialog() {
+        CreatePlaylistDialogFragment().show(supportFragmentManager, "Create Playlist")
+    }
+
     private suspend fun getPlaylistsFromDatabase(): ArrayList<Playlist> {
         val playlists: ArrayList<Playlist> = ArrayList()
         withContext(Dispatchers.IO) {
@@ -109,22 +127,17 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
 
     private suspend fun addPlaylistToDatabase(playlistName: String) {
         withContext(Dispatchers.IO) {
-            AppDatabase.getInstance(this@MainActivity).playlistDao().insertPlaylist()
+            val playlist = Playlist(0, playlistName)
+            AppDatabase.getInstance(this@MainActivity).playlistDao().insertPlaylist(playlist)
         }
     }
 
-    private fun showCreatePlaylistDialog() {
-        CreatePlaylistDialogFragment().show(supportFragmentManager, "Create Playlist")
-    }
-
-    override fun onDialogPositiveClick(dialog: DialogFragment, playlistName: String) {
-        val name = if (playlistName == "") "New Playlist" else playlistName
-
-        Toast.makeText(this, name, Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onDialogNegativeClick(dialog: DialogFragment) {
-
+    private fun updateNavPlaylists() {
+        MainScope().launch {
+            navPlaylists.clear()
+            navPlaylists.addAll(getPlaylistsFromDatabase())
+            playlistsList.adapter?.notifyDataSetChanged()
+        }
     }
 
 }
