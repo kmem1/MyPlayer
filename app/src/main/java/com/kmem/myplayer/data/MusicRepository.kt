@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.kmem.myplayer.service.PlayerService
+import com.kmem.myplayer.ui.MainActivity
 import com.kmem.myplayer.ui.fragments.PlaylistFragment
 import com.kmem.myplayer.utils.MetadataHelper
 import com.kmem.myplayer.viewmodels.FileChooserViewModel
@@ -17,7 +18,8 @@ import java.io.File
 
 class MusicRepository : PlayerService.Repository,
                         PlaylistFragment.Repository,
-                        FileChooserViewModel.Repository {
+                        FileChooserViewModel.Repository,
+                        MainActivity.Repository {
 
     companion object {
         private var instance: MusicRepository? = null
@@ -128,6 +130,23 @@ class MusicRepository : PlayerService.Repository,
                 )
             }
         }
+    }
+
+    override suspend fun addPlaylist(context: Context, playlistName: String) {
+        withContext(Dispatchers.IO) {
+            val playlist = Playlist(0, playlistName)
+            AppDatabase.getInstance(context).playlistDao().insertPlaylist(playlist)
+        }
+    }
+
+    override suspend fun getPlaylists(context: Context): ArrayList<Playlist> {
+        val playlists: ArrayList<Playlist> = ArrayList()
+        withContext(Dispatchers.IO) {
+            playlists.addAll(
+                AppDatabase.getInstance(context).playlistDao().getPlaylists()
+            )
+        }
+        return playlists
     }
 
     private fun <T> MutableLiveData<T>.notifyObservers() {
