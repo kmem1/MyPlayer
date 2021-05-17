@@ -84,6 +84,8 @@ class MusicRepository : PlayerService.Repository,
 
                 AppDatabase.getInstance(context).trackDao().updateAll(tracksInPlaylist)
             }
+
+            currentPlaylistRepository.deleteTracks(tracks)
         }
     }
 
@@ -92,6 +94,8 @@ class MusicRepository : PlayerService.Repository,
             withContext(Dispatchers.IO) {
                 AppDatabase.getInstance(context).trackDao().updateAll(tracks)
             }
+
+            currentPlaylistRepository.updatePositions()
         }
     }
 
@@ -116,6 +120,8 @@ class MusicRepository : PlayerService.Repository,
 
                 AppDatabase.getInstance(context).trackDao().insertAll(newTracks)
             }
+
+            currentPlaylistRepository.addNewTracks()
         }
     }
 

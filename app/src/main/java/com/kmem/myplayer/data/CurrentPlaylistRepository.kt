@@ -2,10 +2,13 @@ package com.kmem.myplayer.data
 
 import android.content.Context
 import android.net.Uri
+import com.kmem.myplayer.MyApplication
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class CurrentPlaylistRepository() {
+class CurrentPlaylistRepository {
 
     private var data: ArrayList<Track> = ArrayList()
     private var shuffleData: ArrayList<Track> = ArrayList() // additional copy for shuffle mode
@@ -30,14 +33,24 @@ class CurrentPlaylistRepository() {
         }
 
     init {
-        //data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylistAsLiveData(0).value!!)
-        //maxIndex = data.lastIndex
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                data.addAll(
+                    AppDatabase.getInstance(MyApplication.context())
+                        .trackDao().getTracksFromPlaylist(1)
+                )
+                maxIndex = data.lastIndex
+            }
+        }
     }
 
     suspend fun updatePositions() {
         withContext(Dispatchers.IO) {
             data.clear()
-            //data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylistAsLiveData(0).value!!)
+            data.addAll(
+                AppDatabase.getInstance(MyApplication.context()).
+                trackDao().getTracksFromPlaylist(1)
+            )
             currentItemIndex = data.indexOfFirst { it.uri == currentUri }
             if (currentItemIndex == -1)
                 currentItemIndex = 0
@@ -47,7 +60,9 @@ class CurrentPlaylistRepository() {
     suspend fun addNewTracks() {
         withContext(Dispatchers.IO) {
             data.clear()
-            //data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylistAsLiveData(0).value!!)
+            data.addAll(AppDatabase.getInstance(MyApplication.context())
+                .trackDao().getTracksFromPlaylist(1)
+            )
             maxIndex = data.lastIndex
 
             val isAlreadyShuffled = shuffleStack.size == 1 && shuffleStack[0].uri == currentUri
@@ -64,7 +79,9 @@ class CurrentPlaylistRepository() {
         data.clear()
 
         withContext(Dispatchers.IO) {
-            //data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylistAsLiveData(0).value!!)
+            data.addAll(AppDatabase.getInstance(MyApplication.context())
+                .trackDao().getTracksFromPlaylist(1)
+            )
         }
 
         maxIndex = data.lastIndex

@@ -172,7 +172,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun loadFilesToRepository(playlistId: Int) {
-        val repository: Repository = MusicRepository.getInstance(getApplication())
+        val repository: Repository = MusicRepository.getInstance()
         repository.addTracks(getApplication(), loadFiles(), playlistId)
     }
 

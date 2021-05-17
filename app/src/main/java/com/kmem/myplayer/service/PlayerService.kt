@@ -125,14 +125,6 @@ class PlayerService : Service() {
                 .build()
         }
 
-        /*
-        MainScope().launch {
-            withContext(Dispatchers.IO) {
-                musicRepository = MusicRepository(context)
-            }
-        }
-         */
-
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
         mediaSession = MediaSessionCompat(this, "PlayerService")
