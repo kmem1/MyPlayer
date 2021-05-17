@@ -1,9 +1,7 @@
-package com.kmem.myplayer.service
+package com.kmem.myplayer.data
 
 import android.content.Context
 import android.net.Uri
-import com.kmem.myplayer.data.AppDatabase
-import com.kmem.myplayer.data.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -11,7 +9,7 @@ import kotlinx.coroutines.withContext
  * Предоставляет данные для сервиса. Сервис делегирует запросы к БД этому классу.
  */
 
-class MusicRepository(val context: Context) {
+class CurrentPlaylistRepository() {
 
     private var data: ArrayList<Track> = ArrayList()
     private var shuffleData: ArrayList<Track> = ArrayList() // additional copy for shuffle mode
@@ -36,14 +34,14 @@ class MusicRepository(val context: Context) {
         }
 
     init {
-        data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
+        //data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
         maxIndex = data.lastIndex
     }
 
     suspend fun updatePositions() {
         withContext(Dispatchers.IO) {
             data.clear()
-            data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
+            //data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
             currentItemIndex = data.indexOfFirst { it.uri == currentUri }
             if (currentItemIndex == -1)
                 currentItemIndex = 0
@@ -53,7 +51,7 @@ class MusicRepository(val context: Context) {
     suspend fun addNewTracks() {
         withContext(Dispatchers.IO) {
             data.clear()
-            data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
+            //data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
             maxIndex = data.lastIndex
 
             val isAlreadyShuffled = shuffleStack.size == 1 && shuffleStack[0].uri == currentUri
@@ -70,7 +68,7 @@ class MusicRepository(val context: Context) {
         data.clear()
 
         withContext(Dispatchers.IO) {
-            data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
+            //data.addAll(AppDatabase.getInstance(context).trackDao().getTracksFromPlaylist(0))
         }
 
         maxIndex = data.lastIndex

@@ -54,7 +54,7 @@ class PlayerService : Service() {
         fun getCurrent(): Track?
         fun getNext(): Track?
         fun getPrevious(): Track?
-        fun getAtPosition(position: Int): Track?
+        fun getAtPosition(position: Int): Track
         fun isEnded(): Boolean
     }
 

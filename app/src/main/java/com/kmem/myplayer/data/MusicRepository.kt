@@ -32,29 +32,31 @@ class MusicRepository : PlayerService.Repository,
         }
     }
 
+    private val currentPlaylistRepository: CurrentPlaylistRepository = CurrentPlaylistRepository()
+
     private val _tracks: MutableLiveData<ArrayList<Track>> = MutableLiveData<ArrayList<Track>>()
     override val tracks: LiveData<ArrayList<Track>> = _tracks
 
     override var shuffle: Boolean = false
 
     override fun getCurrent(): Track? {
-        TODO("Not yet implemented")
+        return currentPlaylistRepository.getCurrent()
     }
 
     override fun getNext(): Track? {
-        TODO("Not yet implemented")
+        return currentPlaylistRepository.getNext()
     }
 
     override fun getPrevious(): Track? {
-        TODO("Not yet implemented")
+        return currentPlaylistRepository.getPrevious()
     }
 
-    override fun getAtPosition(position: Int): Track? {
-        TODO("Not yet implemented")
+    override fun getAtPosition(position: Int): Track {
+        return currentPlaylistRepository.getAtPosition(position)
     }
 
     override fun isEnded(): Boolean {
-        TODO("Not yet implemented")
+        return currentPlaylistRepository.isEnded()
     }
 
     override fun deleteTracks(context: Context, tracks: ArrayList<Track>) {
@@ -75,6 +77,7 @@ class MusicRepository : PlayerService.Repository,
             }
 
             _tracks.notifyObservers()
+            currentPlaylistRepository.deleteTracks(tracks)
         }
     }
 
@@ -83,6 +86,7 @@ class MusicRepository : PlayerService.Repository,
             withContext(Dispatchers.IO) {
                 AppDatabase.getInstance(context).trackDao().updateAll(tracks)
             }
+            currentPlaylistRepository.updatePositions()
         }
     }
 
@@ -106,6 +110,7 @@ class MusicRepository : PlayerService.Repository,
                 )
             }
             _tracks.notifyObservers()
+            currentPlaylistRepository.addNewTracks()
         }
     }
 
