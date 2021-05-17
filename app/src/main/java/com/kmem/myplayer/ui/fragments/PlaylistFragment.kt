@@ -18,6 +18,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBarDrawerToggle
@@ -51,9 +52,9 @@ import kotlinx.coroutines.*
 class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     interface Repository {
-        val tracks: LiveData<ArrayList<Track>>
-
-        fun deleteTracks(context: Context, tracks: ArrayList<Track>)
+        suspend fun getTracksFromPlaylist(context: Context, playlistId: Int): LiveData<List<Track>>
+        suspend fun getPlaylistName(context: Context, playlistId: Int): String
+        fun deleteTracks(context: Context, tracks: ArrayList<Track>, playlistId: Int)
         fun updatePositions(context: Context, tracks: ArrayList<Track>)
     }
 
@@ -85,10 +86,9 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     ): View {
         layout = inflater.inflate(R.layout.fragment_playlist, container, false)
 
-        repository = MusicRepository.getInstance(requireContext())
-        repository.tracks.observe(viewLifecycleOwner, audiosObserver)
-
         playlistId = arguments?.getInt("playlist_id") ?: 0
+
+        repository = MusicRepository.getInstance(requireContext())
 
         list = layout.findViewById<View>(R.id.songs_list) as RecyclerView
         val adapter = PlaylistAdapter(audios)
@@ -140,15 +140,25 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             }
         }
 
+        /*
         activity?.bindService(
             Intent(activity, PlayerService::class.java),
             serviceConnection!!,
             BIND_AUTO_CREATE
         )
 
+         */
+
         setupToolbar()
 
         return layout
+    }
+
+    override fun onResume() {
+        super.onResume()
+        MainScope().launch {
+            observeTracksFromRepository()
+        }
     }
 
     override fun onDestroy() {
@@ -158,7 +168,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             mediaController?.unregisterCallback(callback!!)
             mediaController = null
         }
-        activity?.unbindService(serviceConnection!!)
+        //activity?.unbindService(serviceConnection!!)
     }
     
     private val removeButtonClickListener = View.OnClickListener {
@@ -175,7 +185,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         deleteMode = false
         onDeleteModeChanged()
 
-        repository.deleteTracks(requireContext(), tracks)
+        repository.deleteTracks(requireContext(), tracks, playlistId)
     }
 
     private val selectAllButtonClickListener = View.OnClickListener {
@@ -191,10 +201,14 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     }
 
     private val addButtonClickListener = View.OnClickListener {
-        if (checkPermission())
-            findNavController().navigate(R.id.action_playlist_to_filechooser)
-        else
+        if (checkPermission()) {
+            val bundle = Bundle()
+            bundle.putInt("playlist_id", playlistId)
+            findNavController().navigate(R.id.action_playlist_to_filechooser, bundle)
+        }
+        else {
             requestPermission()
+        }
     }
 
     private val audiosObserver = Observer<ArrayList<Track>> { newAudios ->
@@ -210,6 +224,16 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     private fun setupToolbar() {
         val toolbar = layout.findViewById<Toolbar>(R.id.toolbar)
+
+        MainScope().launch {
+            val title = layout.findViewById<TextView>(R.id.playlist_name_toolbar)
+            var name: String = ""
+            withContext(Dispatchers.IO) {
+                name = repository.getPlaylistName(requireContext(), playlistId)
+            }
+            title.text = name
+        }
+
         val drawer = activity?.findViewById<DrawerLayout>(R.id.drawer)
         (activity as AppCompatActivity).setSupportActionBar(toolbar)
         (activity as AppCompatActivity).supportActionBar?.setDisplayShowTitleEnabled(false)
@@ -226,6 +250,23 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         drawer?.addDrawerListener(toggle)
         toggle.isDrawerIndicatorEnabled = true
         toggle.syncState()
+    }
+
+    private suspend fun observeTracksFromRepository() {
+        var liveData: LiveData<List<Track>>?
+
+        withContext(Dispatchers.IO) {
+
+            liveData = repository.getTracksFromPlaylist(requireContext(), playlistId)
+            delay(150)
+        }
+
+        liveData?.observe(viewLifecycleOwner) {
+            audios.clear()
+            audios.addAll(it)
+
+            list.adapter?.notifyDataSetChanged()
+        }
     }
 
     private fun checkPermission(): Boolean {
@@ -276,7 +317,9 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             if (grantResults.isNotEmpty() &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED
             ) {
-                findNavController().navigate(R.id.action_playlist_to_filechooser)
+                val bundle = Bundle()
+                bundle.putInt("playlist_id", playlistId)
+                findNavController().navigate(R.id.action_playlist_to_filechooser, bundle)
             } else {
                 Toast.makeText(
                     context,

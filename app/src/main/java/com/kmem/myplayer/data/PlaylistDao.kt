@@ -11,6 +11,9 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlist")
     fun getPlaylists(): List<Playlist>
 
+    @Query("SELECT * FROM playlist WHERE playlist_id = :playlistId")
+    fun getPlaylist(playlistId: Int): Playlist
+
     @Insert
     fun insertPlaylist(playlist: Playlist)
 

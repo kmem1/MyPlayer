@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.kmem.myplayer.data.MusicRepository
+import com.kmem.myplayer.data.Playlist
 import com.kmem.myplayer.ui.fragments.FileChooserFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,7 +24,7 @@ import java.io.File
 class FileChooserViewModel(application: Application) : AndroidViewModel(application) {
 
     interface Repository {
-        fun addTracks(context: Context, paths: ArrayList<String>)
+        fun addTracks(context: Context, paths: ArrayList<String>, playlistId: Int)
     }
 
     private val _currentPath: MutableLiveData<String> = MutableLiveData()
@@ -170,8 +171,9 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun loadFilesToRepository() {
+    fun loadFilesToRepository(playlistId: Int) {
         val repository: Repository = MusicRepository.getInstance(getApplication())
-        repository.addTracks(getApplication(), loadFiles())
+        repository.addTracks(getApplication(), loadFiles(), playlistId)
     }
+
 }

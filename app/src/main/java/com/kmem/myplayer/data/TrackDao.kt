@@ -11,6 +11,9 @@ import androidx.room.*
 interface TrackDao {
 
     @Query("SELECT * FROM track_in_playlist WHERE playlist_id = :playlistId ORDER BY position")
+    fun getTracksFromPlaylistAsLiveData(playlistId: Int): LiveData<List<Track>>
+
+    @Query("SELECT * FROM track_in_playlist WHERE playlist_id = :playlistId ORDER BY position")
     fun getTracksFromPlaylist(playlistId: Int): List<Track>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

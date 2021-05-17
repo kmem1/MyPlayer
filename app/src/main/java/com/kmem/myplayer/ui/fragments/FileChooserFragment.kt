@@ -43,6 +43,7 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
     private lateinit var model: FileChooserViewModel
 
     private var scope = CoroutineScope(Dispatchers.Main + Job())
+    private var playlistId: Int = 0
     private lateinit var loadingSpinner: ProgressBar
     private lateinit var layout: View
     private lateinit var mActivity: AppCompatActivity
@@ -68,6 +69,8 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
         loadingSpinner = layout.findViewById(R.id.progress_bar)
         loadingSpinner.visibility = View.GONE
 
+        playlistId = arguments?.getInt("playlist_id") ?: 0
+
         val previousPathButton = layout.findViewById<ImageButton>(R.id.prev_path_button)
         previousPathButton.setOnClickListener { scope.launch { model.openPreviousDir() } }
         val homeButton = layout.findViewById<ImageButton>(R.id.home_button)
@@ -76,8 +79,10 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
         selectAllButton.setOnClickListener { model.selectAllCurrent() }
         val loadButton = layout.findViewById<ImageButton>(R.id.load_files)
         loadButton.setOnClickListener {
-            model.loadFilesToRepository()
-            findNavController().navigate(R.id.action_filechooser_to_playlist)
+            model.loadFilesToRepository(playlistId)
+            val bundle = Bundle()
+            bundle.putInt("playlist_id", playlistId)
+            findNavController().navigate(R.id.action_filechooser_to_playlist, bundle)
         }
 
         list = layout.findViewById(R.id.fileList)

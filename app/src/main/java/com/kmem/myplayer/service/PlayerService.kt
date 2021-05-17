@@ -54,7 +54,7 @@ class PlayerService : Service() {
         fun getCurrent(): Track?
         fun getNext(): Track?
         fun getPrevious(): Track?
-        fun getAtPosition(position: Int): Track?
+        fun getAtPosition(position: Int): Track
         fun isEnded(): Boolean
     }
 
@@ -89,7 +89,7 @@ class PlayerService : Service() {
     private var extractorsFactory: ExtractorsFactory? = null
     private var dataSourceFactory: DataSource.Factory? = null
 
-    private var musicRepository: Repository = MusicRepository.getInstance(context)
+    private var musicRepository: Repository = MusicRepository.getInstance()
 
     private var inactivityCheckJob: Job? = null
 

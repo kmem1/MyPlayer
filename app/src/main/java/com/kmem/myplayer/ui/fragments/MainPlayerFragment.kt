@@ -125,11 +125,14 @@ class MainPlayerFragment : Fragment() {
         }
 
 
+        /*
         activity?.bindService(
             Intent(activity, PlayerService::class.java),
             serviceConnection!!,
             BIND_AUTO_CREATE
         )
+
+         */
 
 
         playButton.setOnClickListener {
@@ -228,7 +231,7 @@ class MainPlayerFragment : Fragment() {
             mediaController = null
         }
         durationBarJob?.cancel()
-        activity?.unbindService(serviceConnection!!)
+        //activity?.unbindService(serviceConnection!!)
     }
 
     private fun setupToolbar() {

@@ -5,40 +5,23 @@ import android.app.Dialog
 import android.content.Context
 import android.content.DialogInterface
 import android.os.Bundle
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
-import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.DialogFragment
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
-import androidx.fragment.app.FragmentPagerAdapter
 import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.setupActionBarWithNavController
-import androidx.navigation.ui.setupWithNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager.widget.ViewPager
-import com.google.android.material.navigation.NavigationView
 import com.kmem.myplayer.R
-import com.kmem.myplayer.data.AppDatabase
+import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.data.Playlist
 import com.kmem.myplayer.ui.adapters.NavListAdapter
 import com.kmem.myplayer.ui.adapters.NavPlaylistsAdapter
-import com.kmem.myplayer.ui.fragments.MainPlayerFragment
-import com.kmem.myplayer.ui.fragments.PlaylistFragment
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.lang.ClassCastException
-import java.lang.IllegalStateException
+import kotlinx.coroutines.*
 
 /**
  *  Главная активность приложения. Она запускается при открытии приложения.
@@ -48,12 +31,18 @@ import java.lang.IllegalStateException
 class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsAdapter.Listener,
                                         CreatePlaylistDialogFragment.CreatePlaylistDialogListener {
 
+    interface Repository {
+        suspend fun addPlaylist(context: Context, playlistName: String)
+        suspend fun getPlaylists(context: Context): ArrayList<Playlist>
+    }
+
     private lateinit var navList: RecyclerView
     private val navItemList: ArrayList<Screen> = arrayListOf(Screen.Home, Screen.SoundEffects)
 
     private lateinit var playlistsList: RecyclerView
     private val navPlaylists: ArrayList<Playlist> = ArrayList()
 
+    private val repository: Repository = MusicRepository.getInstance()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,11 +55,8 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         navList.layoutManager = LinearLayoutManager(this)
         navList.isNestedScrollingEnabled = false
 
-
         MainScope().launch {
-            withContext(Dispatchers.IO) {
-                navPlaylists.addAll(getPlaylistsFromDatabase())
-            }
+            navPlaylists.addAll(repository.getPlaylists(this@MainActivity))
             playlistsList = findViewById<RecyclerView>(R.id.playlists_list)
             val navPlaylistsAdapter = NavPlaylistsAdapter(navPlaylists)
             navPlaylistsAdapter.listener = this@MainActivity
@@ -104,7 +90,7 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         val name = if (playlistName == "") "New Playlist" else playlistName
 
         MainScope().launch {
-            addPlaylistToDatabase(name)
+            repository.addPlaylist(this@MainActivity, name)
             updateNavPlaylists()
         }
     }
@@ -115,27 +101,10 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         CreatePlaylistDialogFragment().show(supportFragmentManager, "Create Playlist")
     }
 
-    private suspend fun getPlaylistsFromDatabase(): ArrayList<Playlist> {
-        val playlists: ArrayList<Playlist> = ArrayList()
-        withContext(Dispatchers.IO) {
-            playlists.addAll(
-                AppDatabase.getInstance(this@MainActivity).playlistDao().getPlaylists()
-            )
-        }
-        return playlists
-    }
-
-    private suspend fun addPlaylistToDatabase(playlistName: String) {
-        withContext(Dispatchers.IO) {
-            val playlist = Playlist(0, playlistName)
-            AppDatabase.getInstance(this@MainActivity).playlistDao().insertPlaylist(playlist)
-        }
-    }
-
     private fun updateNavPlaylists() {
         MainScope().launch {
             navPlaylists.clear()
-            navPlaylists.addAll(getPlaylistsFromDatabase())
+            navPlaylists.addAll(repository.getPlaylists(this@MainActivity))
             playlistsList.adapter?.notifyDataSetChanged()
         }
     }
