@@ -3,6 +3,8 @@ package com.kmem.myplayer.ui.fragments
 import android.Manifest
 import android.content.ComponentName
 import android.content.Context
+import android.content.Context.BIND_AUTO_CREATE
+import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -137,14 +139,11 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             }
         }
 
-        /*
         activity?.bindService(
             Intent(activity, PlayerService::class.java),
             serviceConnection!!,
             BIND_AUTO_CREATE
         )
-
-         */
 
         setupToolbar()
 

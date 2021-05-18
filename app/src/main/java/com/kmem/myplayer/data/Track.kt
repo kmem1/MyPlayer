@@ -1,11 +1,10 @@
 package com.kmem.myplayer.data
 
 import android.net.Uri
+import android.os.Parcel
 import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.PrimaryKey
-import java.io.Serializable
 
 /**
  * Класс, который содержит таблицу БД.
@@ -17,8 +16,44 @@ data class Track(
         @ColumnInfo(name = "playlist_id")
         val playlistId: Int,
         var position: Int,
-        val title: String,
-        val artist: String,
+        val title: String?,
+        val artist: String?,
         val duration: Long,
         @ColumnInfo(name = "file_name")
-        val fileName: String) : Serializable
+        val fileName: String?
+) : Parcelable {
+        constructor(parcel: Parcel) : this(
+                parcel.readParcelable(Uri::class.java.classLoader),
+                parcel.readInt(),
+                parcel.readInt(),
+                parcel.readString(),
+                parcel.readString(),
+                parcel.readLong(),
+                parcel.readString()
+        ) {
+        }
+
+        override fun writeToParcel(parcel: Parcel, flags: Int) {
+                parcel.writeParcelable(uri, flags)
+                parcel.writeInt(playlistId)
+                parcel.writeInt(position)
+                parcel.writeString(title)
+                parcel.writeString(artist)
+                parcel.writeLong(duration)
+                parcel.writeString(fileName)
+        }
+
+        override fun describeContents(): Int {
+                return 0
+        }
+
+        companion object CREATOR : Parcelable.Creator<Track> {
+                override fun createFromParcel(parcel: Parcel): Track {
+                        return Track(parcel)
+                }
+
+                override fun newArray(size: Int): Array<Track?> {
+                        return arrayOfNulls(size)
+                }
+        }
+}

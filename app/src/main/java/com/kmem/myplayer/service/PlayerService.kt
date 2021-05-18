@@ -247,7 +247,7 @@ class PlayerService : Service() {
 
                 updateMetadataFromTrack(track)
 
-                prepareToPlay(track.uri)
+                prepareToPlay(track.uri!!)
 
                 if (!audioFocusRequested) {
                     audioFocusRequested = true
@@ -354,7 +354,7 @@ class PlayerService : Service() {
 
             updateMetadataFromTrack(track)
 
-            prepareToPlay(track.uri)
+            prepareToPlay(track.uri!!)
 
             mediaSession?.setPlaybackState(
                 stateBuilder.setState(
@@ -384,7 +384,7 @@ class PlayerService : Service() {
 
             updateMetadataFromTrack(track)
 
-            prepareToPlay(track.uri)
+            prepareToPlay(track.uri!!)
 
             mediaSession?.setPlaybackState(
                 stateBuilder.setState(
@@ -421,7 +421,7 @@ class PlayerService : Service() {
 
                 updateMetadataFromTrack(track)
 
-                prepareToPlay(track.uri)
+                prepareToPlay(track.uri!!)
 
                 if (!audioFocusRequested) {
                     audioFocusRequested = true

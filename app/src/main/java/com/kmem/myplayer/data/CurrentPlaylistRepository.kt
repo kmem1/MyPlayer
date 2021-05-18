@@ -172,24 +172,35 @@ class CurrentPlaylistRepository {
 
     fun updateCurrentPlaylist(id: Int, pos: Int) {
         MainScope().launch {
+            val track: Track
             if (id != playlistId) {
                 withContext(Dispatchers.IO) {
                     data.clear()
                     data.addAll(AppDatabase.getInstance(MyApplication.context())
                         .trackDao().getTracksFromPlaylist(id))
+                    maxIndex = data.lastIndex
                 }
-            }
-
-            val track = data[pos]
-            if (shuffle) {
-                if (track in shuffleStack) {
-                    shuffleStack.remove(track)
-                    shuffleStack.add(track)
-                } else {
+                track = data[pos]
+                if (shuffle) {
+                    shuffleData.clear()
+                    shuffleData.addAll(data)
                     shuffleData.remove(track)
+                    shuffleStack.clear()
                     shuffleStack.add(track)
+                    stackIndex = 0
                 }
-                stackIndex = shuffleStack.lastIndex
+            } else {
+                track = data[pos]
+                if (shuffle) {
+                    if (track in shuffleStack) {
+                        shuffleStack.remove(track)
+                        shuffleStack.add(track)
+                    } else {
+                        shuffleData.remove(track)
+                        shuffleStack.add(track)
+                    }
+                    stackIndex = shuffleStack.lastIndex
+                }
             }
 
             currentItemIndex = pos
