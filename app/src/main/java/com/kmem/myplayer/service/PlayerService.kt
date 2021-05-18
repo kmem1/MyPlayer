@@ -54,13 +54,13 @@ class PlayerService : Service() {
         fun getCurrent(): Track?
         fun getNext(): Track?
         fun getPrevious(): Track?
-        fun getAtPosition(position: Int): Track
+        fun updateCurrentPlaylist(playlistId: Int, position: Int)
         fun isEnded(): Boolean
     }
 
     companion object {
-        const val ACTION_PLAY_AT_POSITION = "play_at_position"
-        const val EXTRA_POSITION = "extra_position"
+        const val ACTION_PLAY_SELECTED_TRACK = "play_selected"
+        const val EXTRA_TRACK = "extra_track"
         private const val NOTIFICATION_ID = 404
         private const val NOTIFICATION_DEFAULT_CHANNEL_ID = "default_channel"
         private const val INACTIVITY_TIMEOUT = 600_000L // 10 mins
@@ -413,22 +413,11 @@ class PlayerService : Service() {
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onCustomAction(action: String?, extras: Bundle?) {
-            if (action == ACTION_PLAY_AT_POSITION && extras != null) {
+            if (action == ACTION_PLAY_SELECTED_TRACK && extras != null) {
                 startService(Intent(baseContext, PlayerService::class.java))
 
-                if (musicRepository == null) return
-
-                val position = extras.getInt(EXTRA_POSITION)
-                val track = musicRepository?.getAtPosition(position)
-
-                if (track == null) {
-                    Toast.makeText(
-                        applicationContext,
-                        "Swipe Right to Left to add items to playlist",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    return
-                }
+                val track = extras.getSerializable(EXTRA_TRACK) as Track
+                musicRepository.updateCurrentPlaylist(track.playlistId, track.position)
 
                 updateMetadataFromTrack(track)
 
@@ -456,7 +445,6 @@ class PlayerService : Service() {
                     IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
                 )
                 exoPlayer!!.playWhenReady = true
-
 
                 mediaSession?.setPlaybackState(
                     stateBuilder.setState(

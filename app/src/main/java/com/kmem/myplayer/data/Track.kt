@@ -1,9 +1,11 @@
 package com.kmem.myplayer.data
 
 import android.net.Uri
+import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.io.Serializable
 
 /**
  * Класс, который содержит таблицу БД.
@@ -19,4 +21,4 @@ data class Track(
         val artist: String,
         val duration: Long,
         @ColumnInfo(name = "file_name")
-        val fileName: String)
+        val fileName: String) : Serializable

@@ -330,9 +330,9 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     override fun onAudioClick(position: Int) {
         val bundle = Bundle()
-        bundle.putInt(PlayerService.EXTRA_POSITION, position)
+        bundle.putSerializable(PlayerService.EXTRA_TRACK, audios[position])
         mediaController?.transportControls?.sendCustomAction(
-            PlayerService.ACTION_PLAY_AT_POSITION,
+            PlayerService.ACTION_PLAY_SELECTED_TRACK,
             bundle
         )
     }

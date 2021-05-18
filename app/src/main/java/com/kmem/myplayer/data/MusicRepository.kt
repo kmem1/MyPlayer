@@ -2,7 +2,6 @@ package com.kmem.myplayer.data
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.LiveData
 import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.MainActivity
@@ -11,7 +10,6 @@ import com.kmem.myplayer.utils.MetadataHelper
 import com.kmem.myplayer.viewmodels.FileChooserViewModel
 import kotlinx.coroutines.*
 import java.io.File
-
 
 class MusicRepository : PlayerService.Repository,
                         PlaylistFragment.Repository,
@@ -42,8 +40,8 @@ class MusicRepository : PlayerService.Repository,
         return currentPlaylistRepository.getPrevious()
     }
 
-    override fun getAtPosition(position: Int): Track {
-        return currentPlaylistRepository.getAtPosition(position)
+    override fun updateCurrentPlaylist(playlistId: Int, position: Int) {
+        return currentPlaylistRepository.updateCurrentPlaylist(playlistId, position)
     }
 
     override fun isEnded(): Boolean {
@@ -140,7 +138,7 @@ class MusicRepository : PlayerService.Repository,
     }
 
     override suspend fun getPlaylistName(context: Context, playlistId: Int): String {
-        var name = ""
+        var name: String
 
         withContext(Dispatchers.IO) {
             name = AppDatabase.getInstance(context).playlistDao().getPlaylist(playlistId).name
