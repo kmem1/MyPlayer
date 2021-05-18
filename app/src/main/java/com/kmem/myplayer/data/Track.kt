@@ -22,8 +22,9 @@ data class Track(
         @ColumnInfo(name = "file_name")
         val fileName: String?
 ) : Parcelable {
+
         constructor(parcel: Parcel) : this(
-                parcel.readParcelable(Uri::class.java.classLoader),
+                parcel.readParcelable(Uri::class.java.classLoader)!!,
                 parcel.readInt(),
                 parcel.readInt(),
                 parcel.readString(),
@@ -56,4 +57,5 @@ data class Track(
                         return arrayOfNulls(size)
                 }
         }
+
 }

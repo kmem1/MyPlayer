@@ -6,6 +6,10 @@ import android.content.Context
 class MyApplication : Application() {
 
     companion object {
+        const val APP_PREFERENCES = "app_preferences"
+
+        const val APP_PREFERENCES_PLAYLIST_ID = "preferences_playlist_id"
+
         var currentInstance: MyApplication? = null
 
         fun getInstance(): MyApplication {

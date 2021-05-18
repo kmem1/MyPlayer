@@ -170,10 +170,18 @@ class CurrentPlaylistRepository {
         return track
     }
 
+    fun getCurrent(): Track? {
+        if (maxIndex == -1) return null
+        currentUri = data[currentItemIndex].uri
+
+        return data[currentItemIndex]
+    }
+
     fun updateCurrentPlaylist(id: Int, pos: Int) {
         MainScope().launch {
             val track: Track
             if (id != playlistId) {
+                playlistId = id
                 withContext(Dispatchers.IO) {
                     data.clear()
                     data.addAll(AppDatabase.getInstance(MyApplication.context())
@@ -206,13 +214,6 @@ class CurrentPlaylistRepository {
             currentItemIndex = pos
             currentUri = track.uri
         }
-    }
-
-    fun getCurrent(): Track? {
-        if (maxIndex == -1) return null
-        currentUri = data[currentItemIndex].uri
-
-        return data[currentItemIndex]
     }
 
     fun isEnded(): Boolean {

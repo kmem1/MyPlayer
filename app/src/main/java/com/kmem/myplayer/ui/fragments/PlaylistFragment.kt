@@ -164,7 +164,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             mediaController?.unregisterCallback(callback!!)
             mediaController = null
         }
-        //activity?.unbindService(serviceConnection!!)
+        activity?.unbindService(serviceConnection!!)
     }
     
     private val removeButtonClickListener = View.OnClickListener {
@@ -329,7 +329,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     override fun onAudioClick(position: Int) {
         val bundle = Bundle()
-        bundle.putSerializable(PlayerService.EXTRA_TRACK, audios[position])
+        bundle.putParcelable(PlayerService.EXTRA_TRACK, audios[position])
         mediaController?.transportControls?.sendCustomAction(
             PlayerService.ACTION_PLAY_SELECTED_TRACK,
             bundle

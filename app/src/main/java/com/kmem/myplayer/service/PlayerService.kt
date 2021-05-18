@@ -39,7 +39,6 @@ import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.ui.MainActivity
 import kotlinx.coroutines.*
 import java.util.*
-import kotlin.collections.ArrayList
 
 /**
  *  Сервис, который проигрывает музыку. Предоставляет API через PlayerServiceBinder.
@@ -190,11 +189,11 @@ class PlayerService : Service() {
      */
 
     fun setShuffle(value: Boolean) {
-        musicRepository?.shuffle = value
+        musicRepository.shuffle = value
     }
 
     fun getShuffle(): Boolean {
-        return musicRepository?.shuffle ?: false
+        return musicRepository.shuffle
     }
 
     /*
@@ -232,9 +231,7 @@ class PlayerService : Service() {
             if (!exoPlayer!!.playWhenReady || repeatMode) {
                 startService(Intent(baseContext, PlayerService::class.java))
 
-                if (musicRepository == null) return
-
-                val track = musicRepository?.getCurrent()
+                val track = musicRepository.getCurrent()
 
                 if (track == null) {
                     Toast.makeText(
@@ -247,7 +244,7 @@ class PlayerService : Service() {
 
                 updateMetadataFromTrack(track)
 
-                prepareToPlay(track.uri!!)
+                prepareToPlay(track.uri)
 
                 if (!audioFocusRequested) {
                     audioFocusRequested = true
@@ -339,9 +336,7 @@ class PlayerService : Service() {
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onSkipToNext() {
-            if (musicRepository == null) return
-
-            val track = musicRepository?.getNext()
+            val track = musicRepository.getNext()
 
             if (track == null) {
                 Toast.makeText(
@@ -354,7 +349,7 @@ class PlayerService : Service() {
 
             updateMetadataFromTrack(track)
 
-            prepareToPlay(track.uri!!)
+            prepareToPlay(track.uri)
 
             mediaSession?.setPlaybackState(
                 stateBuilder.setState(
@@ -369,9 +364,7 @@ class PlayerService : Service() {
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onSkipToPrevious() {
-            if (musicRepository == null) return
-
-            val track = musicRepository?.getPrevious()
+            val track = musicRepository.getPrevious()
 
             if (track == null) {
                 Toast.makeText(
@@ -384,7 +377,7 @@ class PlayerService : Service() {
 
             updateMetadataFromTrack(track)
 
-            prepareToPlay(track.uri!!)
+            prepareToPlay(track.uri)
 
             mediaSession?.setPlaybackState(
                 stateBuilder.setState(
@@ -416,12 +409,12 @@ class PlayerService : Service() {
             if (action == ACTION_PLAY_SELECTED_TRACK && extras != null) {
                 startService(Intent(baseContext, PlayerService::class.java))
 
-                val track = extras.getSerializable(EXTRA_TRACK) as Track
+                val track = extras.getParcelable<Track>(EXTRA_TRACK)!!
                 musicRepository.updateCurrentPlaylist(track.playlistId, track.position)
 
                 updateMetadataFromTrack(track)
 
-                prepareToPlay(track.uri!!)
+                prepareToPlay(track.uri)
 
                 if (!audioFocusRequested) {
                     audioFocusRequested = true

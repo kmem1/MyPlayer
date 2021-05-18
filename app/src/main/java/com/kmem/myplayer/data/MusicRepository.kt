@@ -24,9 +24,13 @@ class MusicRepository : PlayerService.Repository,
         }
     }
 
-    override var shuffle: Boolean = false
-
     private val currentPlaylistRepository: CurrentPlaylistRepository = CurrentPlaylistRepository()
+
+    override var shuffle: Boolean = false
+        set(value) {
+            currentPlaylistRepository.shuffle = value
+            field = value
+        }
 
     override fun getCurrent(): Track? {
         return currentPlaylistRepository.getCurrent()
@@ -41,7 +45,7 @@ class MusicRepository : PlayerService.Repository,
     }
 
     override fun updateCurrentPlaylist(playlistId: Int, position: Int) {
-        return currentPlaylistRepository.updateCurrentPlaylist(playlistId, position)
+        currentPlaylistRepository.updateCurrentPlaylist(playlistId, position)
     }
 
     override fun isEnded(): Boolean {

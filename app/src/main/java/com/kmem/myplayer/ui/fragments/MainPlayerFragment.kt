@@ -2,6 +2,7 @@ package com.kmem.myplayer.ui.fragments
 
 import android.animation.ObjectAnimator
 import android.content.ComponentName
+import android.content.Context
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
@@ -11,6 +12,7 @@ import android.os.RemoteException
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,6 +29,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.google.android.material.navigation.NavigationView
+import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
 import com.kmem.myplayer.service.PlayerService
 import kotlinx.coroutines.Job
@@ -184,7 +187,9 @@ class MainPlayerFragment : Fragment() {
 
         val toPlaylistButton = layout.findViewById<ImageButton>(R.id.to_playlist_button)
         toPlaylistButton.setOnClickListener {
-            findNavController().navigate(R.id.action_player_to_playlist)
+            val bundle = Bundle()
+            bundle.putInt("playlist_id", getCurrentPlaylistIdFromPreferences())
+            findNavController().navigate(R.id.action_player_to_playlist, bundle)
         }
 
         setupToolbar()
@@ -226,7 +231,7 @@ class MainPlayerFragment : Fragment() {
             mediaController = null
         }
         durationBarJob?.cancel()
-        //activity?.unbindService(serviceConnection!!)
+        activity?.unbindService(serviceConnection!!)
     }
 
     private fun setupToolbar() {
@@ -259,7 +264,6 @@ class MainPlayerFragment : Fragment() {
 
         shuffleButton.isEnabled = true
         repeatButton.isEnabled = true
-
 
         if (newMetadata?.getString(MediaMetadataCompat.METADATA_KEY_ARTIST) == "Unknown") {
             artistView.text = ""
@@ -325,4 +329,14 @@ class MainPlayerFragment : Fragment() {
             }
         }
     }
+
+    private fun getCurrentPlaylistIdFromPreferences(): Int {
+        val sharedPref = activity?.getSharedPreferences(
+            MyApplication.APP_PREFERENCES,
+            Context.MODE_PRIVATE
+        )
+
+        return sharedPref?.getInt(MyApplication.APP_PREFERENCES_PLAYLIST_ID, 1) ?: 1
+    }
+
 }
