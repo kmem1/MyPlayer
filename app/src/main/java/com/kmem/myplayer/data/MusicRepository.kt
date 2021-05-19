@@ -3,6 +3,7 @@ package com.kmem.myplayer.data
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.LiveData
+import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.MainActivity
 import com.kmem.myplayer.ui.fragments.PlaylistFragment
@@ -26,7 +27,7 @@ class MusicRepository : PlayerService.Repository,
 
     private val currentPlaylistRepository: CurrentPlaylistRepository = CurrentPlaylistRepository()
 
-    override var shuffle: Boolean = false
+    override var shuffle: Boolean = MyApplication.getShuffleModeFromPreferences()
         set(value) {
             currentPlaylistRepository.shuffle = value
             field = value
@@ -169,7 +170,7 @@ class MusicRepository : PlayerService.Repository,
         if (title == "Unknown" || artist == "Unknown")
             title = fileName
 
-        return Track(uri, playlistId, position, title, artist, helper.getDuration(), fileName)
+        return Track(uri, playlistId, position, title, artist, helper.getDuration(), fileName, -1)
     }
 
 }

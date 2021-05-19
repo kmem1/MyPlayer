@@ -18,7 +18,7 @@ class CurrentPlaylistRepository {
     private var playlistId = MyApplication.getCurrentPlaylistIdFromPreferences()
     var currentUri: Uri? = null
     var currentItemIndex = 0
-    var shuffle = false
+    var shuffle = MyApplication.getShuffleModeFromPreferences()
         set(value) {
             field = value
             val isAlreadyShuffled = shuffleStack.size == 1 && shuffleStack[0].uri == currentUri
@@ -27,9 +27,15 @@ class CurrentPlaylistRepository {
                 shuffleData.addAll(data)
                 shuffleData.shuffle()
                 shuffleStack.clear()
-                shuffleStack.add(data.first { it.uri == currentUri })
-                shuffleData.remove(data.first { it.uri == currentUri })
+                val currTrack = data.first { it.uri == currentUri }
+                shuffleStack.add(currTrack)
+                shuffleData.remove(currTrack)
                 stackIndex = 0
+                MainScope().launch {
+                    removeStackPositionsInDatabase()
+                    currTrack.positionInStack = stackIndex
+                    updateTrackInDatabase(currTrack)
+                }
             }
         }
 
@@ -41,6 +47,19 @@ class CurrentPlaylistRepository {
                         .trackDao().getTracksFromPlaylist(playlistId)
                 )
                 maxIndex = data.lastIndex
+
+                if (shuffle) {
+                    shuffleData.addAll(data)
+                    shuffleStack.addAll(
+                        AppDatabase.getInstance(MyApplication.context())
+                            .trackDao().getShuffleStackForPlaylist(playlistId)
+                    )
+                    stackIndex = shuffleStack.lastIndex
+                    shuffleData.removeAll(shuffleStack)
+                    val currTrack = shuffleStack[stackIndex]
+                    currentUri = currTrack.uri
+                    currentItemIndex = data.indexOfFirst { it.uri == currentUri }
+                }
             }
         }
     }
@@ -130,6 +149,8 @@ class CurrentPlaylistRepository {
             track = shuffleData.removeAt(0)
             shuffleStack.add(track)
             stackIndex++
+            track.positionInStack = stackIndex
+            updateTrackInDatabase(track)
         } else {
             track = shuffleStack[++stackIndex]
         }
@@ -138,6 +159,24 @@ class CurrentPlaylistRepository {
         currentItemIndex = data.indexOf(track)
 
         return track
+    }
+
+    private fun updateTrackInDatabase(track: Track) {
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                AppDatabase.getInstance(MyApplication.context()).trackDao().updateTrack(track)
+            }
+        }
+    }
+
+    private suspend fun removeStackPositionsInDatabase() {
+        for (track in data) {
+            track.positionInStack = -1
+        }
+
+        withContext(Dispatchers.IO) {
+            AppDatabase.getInstance(MyApplication.context()).trackDao().updateAll(data)
+        }
     }
 
     private fun refreshShuffleData() {
@@ -188,15 +227,23 @@ class CurrentPlaylistRepository {
                     data.addAll(AppDatabase.getInstance(MyApplication.context())
                         .trackDao().getTracksFromPlaylist(id))
                     maxIndex = data.lastIndex
+                    shuffleStack.clear()
+                    shuffleData.clear()
                 }
                 track = data[pos]
                 if (shuffle) {
+                    val stackFromDatabase = ArrayList<Track>()
+                    withContext(Dispatchers.IO) {
+                        stackFromDatabase.addAll(AppDatabase.getInstance(MyApplication.context())
+                            .trackDao().getShuffleStackForPlaylist(playlistId))
+                    }
+                    shuffleStack.addAll(stackFromDatabase)
+                    shuffleStack.remove(track)
+                    shuffleStack.add(track)
+                    stackIndex = shuffleStack.lastIndex
                     shuffleData.clear()
                     shuffleData.addAll(data)
-                    shuffleData.remove(track)
-                    shuffleStack.clear()
-                    shuffleStack.add(track)
-                    stackIndex = 0
+                    shuffleData.removeAll(shuffleStack)
                 }
             } else {
                 track = data[pos]

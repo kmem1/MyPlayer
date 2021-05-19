@@ -95,8 +95,8 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
                 repository.addPlaylist(this@MainActivity, name)
                 playlists = repository.getPlaylists(this@MainActivity)
             }
-            val nextId = playlists.maxByOrNull { it.playlistId }?.playlistId ?: 1
-            val bundle = bundleOf("playlist_id" to nextId)
+            val newPlaylistId = playlists.maxByOrNull { it.playlistId }?.playlistId ?: 1
+            val bundle = bundleOf("playlist_id" to newPlaylistId)
             findNavController(R.id.nav_host_fragment_content_main)
                 .navigate(R.id.nav_playlist, bundle)
             updateNavPlaylists()

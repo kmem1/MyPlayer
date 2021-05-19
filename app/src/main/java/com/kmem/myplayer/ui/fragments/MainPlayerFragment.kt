@@ -58,7 +58,7 @@ class MainPlayerFragment : Fragment() {
     private var isPlaying = false
     private var durationBarJob: Job? = null
     private var isStarted = false
-    private var shuffled = false
+    private var shuffled = MyApplication.getShuffleModeFromPreferences()
     private var repeated = false
 
     override fun onCreateView(
@@ -170,6 +170,7 @@ class MainPlayerFragment : Fragment() {
             alphaAnimator.start()
             shuffled = !shuffled
             playerService?.setShuffle(shuffled)
+            MyApplication.setShuffleModeInPreferences(shuffled)
         }
 
         repeatButton.isEnabled = false
@@ -204,11 +205,11 @@ class MainPlayerFragment : Fragment() {
         // update duration if there is already playing track on pause
         durationBar.progress = mediaController?.playbackState?.position?.toInt() ?: 0
 
-        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button) as ImageButton
+        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
         shuffled = playerService?.getShuffle() ?: false
         shuffleButton.alpha = if (shuffled) TO_ALPHA else FROM_ALPHA
 
-        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button) as ImageButton
+        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
         repeated = playerService?.repeatMode ?: false
         repeatButton.alpha = if (repeated) TO_ALPHA else FROM_ALPHA
 

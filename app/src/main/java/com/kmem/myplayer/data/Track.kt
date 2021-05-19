@@ -20,7 +20,9 @@ data class Track(
         val artist: String?,
         val duration: Long,
         @ColumnInfo(name = "file_name")
-        val fileName: String?
+        val fileName: String?,
+        @ColumnInfo(name = "position_in_stack")
+        var positionInStack: Int
 ) : Parcelable {
 
         constructor(parcel: Parcel) : this(
@@ -30,7 +32,8 @@ data class Track(
                 parcel.readString(),
                 parcel.readString(),
                 parcel.readLong(),
-                parcel.readString()
+                parcel.readString(),
+                parcel.readInt()
         ) {
         }
 
@@ -42,6 +45,7 @@ data class Track(
                 parcel.writeString(artist)
                 parcel.writeLong(duration)
                 parcel.writeString(fileName)
+                parcel.writeInt(positionInStack)
         }
 
         override fun describeContents(): Int {
