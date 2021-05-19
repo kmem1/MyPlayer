@@ -90,8 +90,17 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         val name = if (playlistName == "") "New Playlist" else playlistName
 
         MainScope().launch {
-            repository.addPlaylist(this@MainActivity, name)
+            val playlists: ArrayList<Playlist>
+            withContext(Dispatchers.IO) {
+                repository.addPlaylist(this@MainActivity, name)
+                playlists = repository.getPlaylists(this@MainActivity)
+            }
+            val nextId = playlists.maxByOrNull { it.playlistId }?.playlistId ?: 1
+            val bundle = bundleOf("playlist_id" to nextId)
+            findNavController(R.id.nav_host_fragment_content_main)
+                .navigate(R.id.nav_playlist, bundle)
             updateNavPlaylists()
+            findViewById<DrawerLayout>(R.id.drawer).closeDrawers()
         }
     }
 
@@ -104,7 +113,11 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
     private fun updateNavPlaylists() {
         MainScope().launch {
             navPlaylists.clear()
-            navPlaylists.addAll(repository.getPlaylists(this@MainActivity))
+            val playlists: ArrayList<Playlist>
+            withContext(Dispatchers.IO) {
+                playlists = repository.getPlaylists(this@MainActivity)
+            }
+            navPlaylists.addAll(playlists)
             playlistsList.adapter?.notifyDataSetChanged()
         }
     }

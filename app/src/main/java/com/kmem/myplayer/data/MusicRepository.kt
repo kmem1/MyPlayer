@@ -53,8 +53,10 @@ class MusicRepository : PlayerService.Repository,
     }
 
     override suspend fun addPlaylist(context: Context, playlistName: String) {
+        var playlist: Playlist
+
         withContext(Dispatchers.IO) {
-            val playlist = Playlist(0, playlistName)
+            playlist = Playlist(0, playlistName)
             AppDatabase.getInstance(context).playlistDao().insertPlaylist(playlist)
         }
     }
@@ -145,7 +147,9 @@ class MusicRepository : PlayerService.Repository,
         var name: String
 
         withContext(Dispatchers.IO) {
-            name = AppDatabase.getInstance(context).playlistDao().getPlaylist(playlistId).name
+            delay(100)
+            val playlist = AppDatabase.getInstance(context).playlistDao().getPlaylist(playlistId)
+            name = playlist?.name ?: ""
         }
 
         return name

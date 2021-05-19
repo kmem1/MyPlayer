@@ -222,12 +222,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         val toolbar = layout.findViewById<Toolbar>(R.id.toolbar)
 
         MainScope().launch {
-            val title = layout.findViewById<TextView>(R.id.playlist_name_toolbar)
-            var name: String = ""
-            withContext(Dispatchers.IO) {
-                name = repository.getPlaylistName(requireContext(), playlistId)
-            }
-            title.text = name
+            setToolbarTitle()
         }
 
         val drawer = activity?.findViewById<DrawerLayout>(R.id.drawer)
@@ -246,6 +241,15 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         drawer?.addDrawerListener(toggle)
         toggle.isDrawerIndicatorEnabled = true
         toggle.syncState()
+    }
+
+    private suspend fun setToolbarTitle() {
+        val title = layout.findViewById<TextView>(R.id.playlist_name_toolbar)
+        var name: String = ""
+        withContext(Dispatchers.IO) {
+            name = repository.getPlaylistName(requireContext(), playlistId)
+        }
+        title.text = name
     }
 
     private suspend fun observeTracksFromRepository() {

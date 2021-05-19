@@ -188,7 +188,7 @@ class MainPlayerFragment : Fragment() {
         val toPlaylistButton = layout.findViewById<ImageButton>(R.id.to_playlist_button)
         toPlaylistButton.setOnClickListener {
             val bundle = Bundle()
-            bundle.putInt("playlist_id", getCurrentPlaylistIdFromPreferences())
+            bundle.putInt("playlist_id", MyApplication.getCurrentPlaylistIdFromPreferences())
             findNavController().navigate(R.id.action_player_to_playlist, bundle)
         }
 
@@ -328,15 +328,6 @@ class MainPlayerFragment : Fragment() {
                 }
             }
         }
-    }
-
-    private fun getCurrentPlaylistIdFromPreferences(): Int {
-        val sharedPref = activity?.getSharedPreferences(
-            MyApplication.APP_PREFERENCES,
-            Context.MODE_PRIVATE
-        )
-
-        return sharedPref?.getInt(MyApplication.APP_PREFERENCES_PLAYLIST_ID, 1) ?: 1
     }
 
 }

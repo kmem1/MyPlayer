@@ -15,7 +15,7 @@ class CurrentPlaylistRepository {
     private var shuffleStack: ArrayList<Track> = ArrayList() // stack trace for shuffle mode
     private var stackIndex = 0
     private var maxIndex = 0
-    private var playlistId = 1
+    private var playlistId = MyApplication.getCurrentPlaylistIdFromPreferences()
     var currentUri: Uri? = null
     var currentItemIndex = 0
     var shuffle = false
@@ -182,6 +182,7 @@ class CurrentPlaylistRepository {
             val track: Track
             if (id != playlistId) {
                 playlistId = id
+                MyApplication.setCurrentPlaylistIdInPreferences(id)
                 withContext(Dispatchers.IO) {
                     data.clear()
                     data.addAll(AppDatabase.getInstance(MyApplication.context())
