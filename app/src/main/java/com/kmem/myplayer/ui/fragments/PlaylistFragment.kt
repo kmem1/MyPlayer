@@ -245,7 +245,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     private suspend fun setToolbarTitle() {
         val title = layout.findViewById<TextView>(R.id.playlist_name_toolbar)
-        var name: String = ""
+        var name: String
         withContext(Dispatchers.IO) {
             name = repository.getPlaylistName(requireContext(), playlistId)
         }

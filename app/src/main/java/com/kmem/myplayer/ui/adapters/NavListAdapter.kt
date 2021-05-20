@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
 import com.kmem.myplayer.ui.Screen
 
-class NavListAdapter(val navItems: ArrayList<Screen>) : RecyclerView.Adapter<NavListAdapter.ViewHolder>() {
+class NavListAdapter(private val navItems: ArrayList<Screen>) : RecyclerView.Adapter<NavListAdapter.ViewHolder>() {
 
     var listener: Listener? = null
 

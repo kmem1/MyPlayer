@@ -8,7 +8,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.kmem.myplayer.data.MusicRepository
-import com.kmem.myplayer.data.Playlist
 import com.kmem.myplayer.ui.fragments.FileChooserFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -77,7 +76,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
             currentTree = currentTree?.parent
 
         wasSelectedOneFile = false
-        _currentDirs.value = currentTree?.childsList()!!
+        _currentDirs.value = currentTree?.childrenList()!!
     }
 
     private suspend fun openDir(dir: FileChooserFragment.FileTreeComponent?) {
@@ -98,7 +97,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         wasSelectedOneFile = false
-        _currentDirs.value = dir.childsList()!!
+        _currentDirs.value = dir.childrenList()!!
     }
 
     suspend fun openPreviousDir() {
@@ -125,17 +124,17 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         wasSelectedOneFile = true
         positionSelected = position
         file.changeSelected(!file.isSelected)
-        _currentDirs.value = currentTree?.childsList()!!
+        _currentDirs.value = currentTree?.childrenList()!!
     }
 
     fun selectAllCurrent() {
-        if (currentTree?.childsList()!!.all { it.isSelected })
-            currentTree?.childsList()!!.forEach { it.changeSelected(false) }
+        if (currentTree?.childrenList()!!.all { it.isSelected })
+            currentTree?.childrenList()!!.forEach { it.changeSelected(false) }
         else
-            currentTree?.childsList()!!.forEach { it.changeSelected(true) }
+            currentTree?.childrenList()!!.forEach { it.changeSelected(true) }
 
         wasSelectedOneFile = false
-        _currentDirs.value = currentTree?.childsList()!!
+        _currentDirs.value = currentTree?.childrenList()!!
     }
 
     fun loadFiles(tree: FileChooserFragment.FileTreeComponent? = null): ArrayList<String> {
@@ -148,13 +147,13 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
             tmpTree = currentTree
         }
 
-        for (child in tmpTree?.childsList()!!) {
+        for (child in tmpTree?.childrenList()!!) {
             if (child.isSelected) {
                 if (child.isDirectory)
                     loadAllFiles(child)
                 else
                     pathsToUpload.add(child.model?.file?.absolutePath!!)
-            } else if (child.hasSelectedChilds) { // always false for files (not dirs)
+            } else if (child.hasSelectedChildren) { // always false for files (not dirs)
                 loadFiles(child)
             }
         }
@@ -163,7 +162,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     private fun loadAllFiles(tree: FileChooserFragment.FileTreeComponent?) {
-        for (child in tree?.childsList()!!) {
+        for (child in tree?.childrenList()!!) {
             if (child.isDirectory)
                 loadAllFiles(child)
             else

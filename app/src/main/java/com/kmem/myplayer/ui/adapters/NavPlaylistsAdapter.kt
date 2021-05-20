@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.Playlist
 
-class NavPlaylistsAdapter(val playlists: ArrayList<Playlist>) : RecyclerView.Adapter<NavPlaylistsAdapter.ViewHolder>() {
+class NavPlaylistsAdapter(private val playlists: ArrayList<Playlist>) : RecyclerView.Adapter<NavPlaylistsAdapter.ViewHolder>() {
 
     class ViewHolder(val playlistView: LinearLayout) : RecyclerView.ViewHolder(playlistView)
 
@@ -20,13 +20,13 @@ class NavPlaylistsAdapter(val playlists: ArrayList<Playlist>) : RecyclerView.Ada
 
     override fun getItemCount(): Int = playlists.size
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NavPlaylistsAdapter.ViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val navItemView = LayoutInflater.from(parent.context)
             .inflate(R.layout.nav_playlist_item, parent, false) as LinearLayout
         return ViewHolder(navItemView)
     }
 
-    override fun onBindViewHolder(holder: NavPlaylistsAdapter.ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val view = holder.playlistView
         val currentPlaylist = playlists[position]
 

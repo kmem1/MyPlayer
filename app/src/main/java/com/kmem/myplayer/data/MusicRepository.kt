@@ -90,7 +90,9 @@ class MusicRepository : PlayerService.Repository,
                 AppDatabase.getInstance(context).trackDao().updateAll(tracksInPlaylist)
             }
 
-            currentPlaylistRepository.deleteTracks(tracks)
+            val playlistIdOfTracks = tracks[0].playlistId
+            if (playlistIdOfTracks == MyApplication.getCurrentPlaylistIdFromPreferences())
+                currentPlaylistRepository.deleteTracks(tracks)
         }
     }
 
@@ -100,7 +102,9 @@ class MusicRepository : PlayerService.Repository,
                 AppDatabase.getInstance(context).trackDao().updateAll(tracks)
             }
 
-            currentPlaylistRepository.updatePositions()
+            val playlistIdOfTracks = tracks[0].playlistId
+            if (playlistIdOfTracks == MyApplication.getCurrentPlaylistIdFromPreferences())
+                currentPlaylistRepository.updatePositions()
         }
     }
 
@@ -126,7 +130,8 @@ class MusicRepository : PlayerService.Repository,
                 AppDatabase.getInstance(context).trackDao().insertAll(newTracks)
             }
 
-            currentPlaylistRepository.addNewTracks()
+            if (playlistId == MyApplication.getCurrentPlaylistIdFromPreferences())
+                currentPlaylistRepository.addNewTracks()
         }
     }
 
@@ -148,9 +153,8 @@ class MusicRepository : PlayerService.Repository,
         var name: String
 
         withContext(Dispatchers.IO) {
-            delay(100)
             val playlist = AppDatabase.getInstance(context).playlistDao().getPlaylist(playlistId)
-            name = playlist?.name ?: ""
+            name = playlist.name
         }
 
         return name

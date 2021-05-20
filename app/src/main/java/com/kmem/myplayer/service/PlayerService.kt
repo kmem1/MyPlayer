@@ -62,7 +62,7 @@ class PlayerService : Service() {
         const val EXTRA_TRACK = "extra_track"
         private const val NOTIFICATION_ID = 404
         private const val NOTIFICATION_DEFAULT_CHANNEL_ID = "default_channel"
-        private const val INACTIVITY_TIMEOUT = 600_000L // 10 mins
+        private const val INACTIVITY_TIMEOUT = 600_000L // 10 minutes
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -538,9 +538,9 @@ class PlayerService : Service() {
                 if (repeatMode) {
                     mediaSessionCallback.onPlay()
                 } else {
-                    val isEnded = musicRepository?.isEnded()
+                    val isEnded = musicRepository.isEnded()
                     mediaSessionCallback.onSkipToNext()
-                    if (isEnded == true)
+                    if (isEnded)
                         mediaSessionCallback.onPause()
                 }
             }

@@ -2,7 +2,6 @@ package com.kmem.myplayer.ui.fragments
 
 import android.animation.ObjectAnimator
 import android.content.ComponentName
-import android.content.Context
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
@@ -12,23 +11,21 @@ import android.os.RemoteException
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.widget.Toolbar
-import android.widget.*
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
+import android.widget.TextView
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
-import androidx.navigation.findNavController
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.setupActionBarWithNavController
-import com.google.android.material.navigation.NavigationView
 import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
 import com.kmem.myplayer.service.PlayerService
@@ -46,8 +43,10 @@ import kotlinx.coroutines.launch
 
 class MainPlayerFragment : Fragment() {
 
-    private val FROM_ALPHA = 0.3f
-    private val TO_ALPHA = 1f
+    companion object {
+        private const val FROM_ALPHA = 0.3f
+        private const val TO_ALPHA = 1f
+    }
 
     private var playerServiceBinder: PlayerService.PlayerServiceBinder? = null
     private var mediaController: MediaControllerCompat? = null

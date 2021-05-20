@@ -6,16 +6,12 @@ import android.content.Context
 class MyApplication : Application() {
 
     companion object {
-        const val APP_PREFERENCES = "app_preferences"
+        private const val APP_PREFERENCES = "app_preferences"
 
-        const val APP_PREFERENCES_PLAYLIST_ID = "preferences_playlist_id"
-        const val APP_PREFERENCES_SHUFFLE = "preferences_shuffle"
+        private const val APP_PREFERENCES_PLAYLIST_ID = "preferences_playlist_id"
+        private const val APP_PREFERENCES_SHUFFLE = "preferences_shuffle"
 
         lateinit var currentInstance: MyApplication
-
-        fun getInstance(): MyApplication {
-            return currentInstance
-        }
 
         fun context(): Context {
             return currentInstance.applicationContext

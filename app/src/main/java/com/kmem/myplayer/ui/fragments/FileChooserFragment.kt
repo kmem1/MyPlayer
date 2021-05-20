@@ -5,11 +5,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
@@ -34,10 +32,6 @@ import java.io.Serializable
  */
 
 class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
-
-    companion object {
-        const val PATHS = "paths"
-    }
 
     private val currentDirs: ArrayList<FileTreeComponent> = ArrayList()
     private lateinit var model: FileChooserViewModel
@@ -168,22 +162,22 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
         var parent: FileTreeComponent? = null
         var model: FileModel? = null
         var isSelected: Boolean = false
-        var hasSelectedChilds = false
+        var hasSelectedChildren = false
         var isInitialized = false
         open var isDirectory = false
 
         open fun initialize() {}
-        open fun checkChilds() {}
+        open fun checkChildren() {}
         open fun childAt(index: Int): FileTreeComponent? {
             return null
         }
 
-        open fun childsList(): ArrayList<FileTreeComponent>? {
+        open fun childrenList(): ArrayList<FileTreeComponent>? {
             return null
         }
 
         open fun changeSelected(value: Boolean) {}
-        open fun updateChilds(value: Boolean) {}
+        open fun updateChildren(value: Boolean) {}
     }
 
     class FileNode(parent: FileTreeComponent, model: FileModel) : FileTreeComponent(),
@@ -195,13 +189,13 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
 
         override fun changeSelected(value: Boolean) {
             isSelected = value
-            parent?.checkChilds()
+            parent?.checkChildren()
         }
     }
 
     class DirectoryNode(parent: FileTreeComponent?, model: FileModel?) : FileTreeComponent(),
         Serializable {
-        var childs = ArrayList<FileTreeComponent>()
+        private var children = ArrayList<FileTreeComponent>()
         var childModels = ArrayList<FileModel>() // models for lately initializing
         override var isDirectory = true
 
@@ -227,46 +221,46 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
                     FileNode(this, childModel)
                 }
                 node.isSelected = this.isSelected
-                childs.add(node)
+                children.add(node)
             }
             isInitialized = true
         }
 
         override fun changeSelected(value: Boolean) {
             isSelected = value
-            parent?.checkChilds()
+            parent?.checkChildren()
             if (isInitialized)
-                updateChilds(value)
+                updateChildren(value)
         }
 
-        override fun checkChilds() {
+        override fun checkChildren() {
             when {
-                childs.all { it.isSelected } -> {
+                children.all { it.isSelected } -> {
                     isSelected = true
                 }
-                childs.any { it.isSelected || it.hasSelectedChilds } -> {
-                    hasSelectedChilds = true
+                children.any { it.isSelected || it.hasSelectedChildren } -> {
+                    hasSelectedChildren = true
                     isSelected = false
                 }
                 else -> {
                     isSelected = false
-                    hasSelectedChilds = false
+                    hasSelectedChildren = false
                 }
             }
-            parent?.checkChilds()
+            parent?.checkChildren()
         }
 
-        override fun updateChilds(value: Boolean) {
-            childs.forEach { it.isSelected = value; it.updateChilds(value) }
+        override fun updateChildren(value: Boolean) {
+            children.forEach { it.isSelected = value; it.updateChildren(value) }
         }
 
         override fun childAt(index: Int): FileTreeComponent {
-            return childs[index]
+            return children[index]
         }
 
-        override fun childsList(): ArrayList<FileTreeComponent> {
+        override fun childrenList(): ArrayList<FileTreeComponent> {
             initialize()
-            return childs
+            return children
         }
 
         private fun isAcceptable(file: File): Boolean {

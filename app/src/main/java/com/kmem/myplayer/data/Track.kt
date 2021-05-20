@@ -34,8 +34,7 @@ data class Track(
                 parcel.readLong(),
                 parcel.readString(),
                 parcel.readInt()
-        ) {
-        }
+        )
 
         override fun writeToParcel(parcel: Parcel, flags: Int) {
                 parcel.writeParcelable(uri, flags)

@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        navList = findViewById<RecyclerView>(R.id.nav_list)
+        navList = findViewById(R.id.nav_list)
         val navListAdapter = NavListAdapter(navItemList)
         navListAdapter.listener = this
         navList.adapter = navListAdapter
@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
 
         MainScope().launch {
             navPlaylists.addAll(repository.getPlaylists(this@MainActivity))
-            playlistsList = findViewById<RecyclerView>(R.id.playlists_list)
+            playlistsList = findViewById(R.id.playlists_list)
             val navPlaylistsAdapter = NavPlaylistsAdapter(navPlaylists)
             navPlaylistsAdapter.listener = this@MainActivity
             playlistsList.adapter = navPlaylistsAdapter
