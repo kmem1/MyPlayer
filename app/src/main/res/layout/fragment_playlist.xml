@@ -16,7 +16,10 @@
             android:id="@+id/playlist_name_toolbar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center" />
+            android:layout_gravity="center"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:layout_marginHorizontal="16dp"/>
 
     </androidx.appcompat.widget.Toolbar>
 

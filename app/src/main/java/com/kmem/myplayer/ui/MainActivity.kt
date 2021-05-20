@@ -29,11 +29,13 @@ import kotlinx.coroutines.*
  */
 
 class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsAdapter.Listener,
-                                        CreatePlaylistDialogFragment.CreatePlaylistDialogListener {
+        CreatePlaylistDialogFragment.CreatePlaylistDialogListener,
+        DeletePlaylistConfirmationDialogFragment.DeletePlaylistConfirmationDialogListener {
 
     interface Repository {
         suspend fun addPlaylist(context: Context, playlistName: String)
         suspend fun getPlaylists(context: Context): ArrayList<Playlist>
+        fun deletePlaylist(context: Context, playlist: Playlist)
     }
 
     private lateinit var navList: RecyclerView
@@ -86,7 +88,12 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         findViewById<DrawerLayout>(R.id.drawer).closeDrawers()
     }
 
-    override fun onDialogPositiveClick(dialog: DialogFragment, playlistName: String) {
+    override fun onDeletePlaylistButtonClicked(playlist: Playlist) {
+        DeletePlaylistConfirmationDialogFragment(playlist)
+            .show(supportFragmentManager, "Delete Playlist")
+    }
+
+    override fun onCreatePlaylistDialogPositiveClick(dialog: DialogFragment, playlistName: String) {
         val name = if (playlistName == "") "New Playlist" else playlistName
 
         MainScope().launch {
@@ -104,7 +111,19 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         }
     }
 
-    override fun onDialogNegativeClick(dialog: DialogFragment) { }
+    override fun onCreatePlaylistDialogNegativeClick(dialog: DialogFragment) { }
+
+    override fun onDeletePlaylistConfirmationPositiveClick(
+        dialog: DialogFragment,
+        playlist: Playlist
+    ) {
+        navPlaylists.remove(playlist)
+        playlistsList.adapter?.notifyDataSetChanged()
+
+        repository.deletePlaylist(this@MainActivity, playlist)
+    }
+
+    override fun onDeletePlaylistConfirmationNegativeClick(dialog: DialogFragment) { }
 
     private fun showCreatePlaylistDialog() {
         CreatePlaylistDialogFragment().show(supportFragmentManager, "Create Playlist")
@@ -138,8 +157,8 @@ class CreatePlaylistDialogFragment : DialogFragment() {
     private lateinit var listener: CreatePlaylistDialogListener
 
     interface CreatePlaylistDialogListener {
-        fun onDialogPositiveClick(dialog: DialogFragment, playlistName: String)
-        fun onDialogNegativeClick(dialog: DialogFragment)
+        fun onCreatePlaylistDialogPositiveClick(dialog: DialogFragment, playlistName: String)
+        fun onCreatePlaylistDialogNegativeClick(dialog: DialogFragment)
     }
 
     override fun onAttach(context: Context) {
@@ -167,11 +186,57 @@ class CreatePlaylistDialogFragment : DialogFragment() {
                 .setPositiveButton(android.R.string.ok,
                     DialogInterface.OnClickListener { dialog, id ->
                         val name = view.findViewById<EditText>(R.id.playlist_name).text.toString()
-                        listener.onDialogPositiveClick(this, name)
+                        listener.onCreatePlaylistDialogPositiveClick(this, name)
                     })
                 .setNegativeButton(android.R.string.cancel,
                     DialogInterface.OnClickListener { dialog, id ->
-                        listener.onDialogNegativeClick(this)
+                        listener.onCreatePlaylistDialogNegativeClick(this)
+                    })
+
+            builder.create()
+        } ?: throw IllegalStateException("Activity cannot be null")
+    }
+
+}
+
+class DeletePlaylistConfirmationDialogFragment(private val playlist: Playlist) : DialogFragment() {
+
+    private lateinit var listener: DeletePlaylistConfirmationDialogListener
+
+    interface DeletePlaylistConfirmationDialogListener {
+        fun onDeletePlaylistConfirmationPositiveClick(dialog: DialogFragment, playlist: Playlist)
+        fun onDeletePlaylistConfirmationNegativeClick(dialog: DialogFragment)
+    }
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+
+        try {
+            listener = context as DeletePlaylistConfirmationDialogListener
+        } catch (e: ClassCastException) {
+            throw ClassCastException((context.toString() +
+                    " must implement DeletePlaylistConfirmationDialogListener"))
+        }
+    }
+
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        return activity?.let {
+            val builder = AlertDialog.Builder(it)
+
+            builder.setTitle(R.string.delete_playlist_confirmation_dialog_title)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setMessage(
+                    resources.getString(
+                        R.string.delete_playlist_confirmation_dialog_message, playlist.name
+                    )
+                )
+                .setPositiveButton(R.string.yes,
+                    DialogInterface.OnClickListener { dialog, id ->
+                        listener.onDeletePlaylistConfirmationPositiveClick(this, playlist)
+                    })
+                .setNegativeButton(R.string.no,
+                    DialogInterface.OnClickListener { dialog, id ->
+                        listener.onDeletePlaylistConfirmationNegativeClick(this)
                     })
 
             builder.create()

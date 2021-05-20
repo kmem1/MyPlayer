@@ -207,12 +207,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         }
     }
 
-    private val audiosObserver = Observer<ArrayList<Track>> { newAudios ->
-        audios.clear()
-        audios.addAll(newAudios)
-        list.adapter?.notifyDataSetChanged()
-    }
-
     private val uriObserver = Observer<Uri> { newUri ->
         currentUri = newUri
         list.adapter?.notifyDataSetChanged()
@@ -256,7 +250,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         var liveData: LiveData<List<Track>>?
 
         withContext(Dispatchers.IO) {
-
             liveData = repository.getTracksFromPlaylist(requireContext(), playlistId)
             delay(150)
         }

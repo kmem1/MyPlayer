@@ -72,6 +72,17 @@ class MainPlayerFragment : Fragment() {
         val nextButton = layout.findViewById<ImageView>(R.id.next_button)
         val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
         val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
+        val toPlaylistButton = layout.findViewById<ImageButton>(R.id.to_playlist_button)
+
+        prevButton.setOnClickListener(prevButtonClickListener)
+        playButton.setOnClickListener(playButtonClickListener)
+        nextButton.setOnClickListener(nextButtonClickListener)
+        shuffleButton.setOnClickListener(shuffleButtonClickListener)
+        repeatButton.setOnClickListener(repeatButtonClickListener)
+        toPlaylistButton.setOnClickListener(toPlaylistButtonClickListener)
+
+        shuffleButton.isEnabled = false
+        repeatButton.isEnabled = false
 
         // select TextViews for sliding long text
         layout.findViewById<TextView>(R.id.track_title).isSelected = true
@@ -132,66 +143,6 @@ class MainPlayerFragment : Fragment() {
             BIND_AUTO_CREATE
         )
 
-        playButton.setOnClickListener {
-            if (mediaController != null) {
-                if (isPlaying)
-                    mediaController?.transportControls?.pause()
-                else
-                    mediaController?.transportControls?.play()
-            }
-        }
-
-        nextButton.setOnClickListener {
-            if (mediaController != null) {
-                // nullify duration
-                layout.findViewById<SeekBar>(R.id.duration_bar).progress = 0
-                mediaController?.transportControls?.skipToNext()
-            }
-        }
-
-        prevButton.setOnClickListener {
-            if (mediaController != null) {
-                // nullify duration
-                layout.findViewById<SeekBar>(R.id.duration_bar).progress = 0
-                mediaController?.transportControls?.skipToPrevious()
-            }
-        }
-
-        shuffleButton.isEnabled = false
-        shuffleButton.setOnClickListener {
-            var fromAlpha = FROM_ALPHA
-            var toAlpha = TO_ALPHA
-            if (shuffled)
-                fromAlpha = toAlpha.also { toAlpha = fromAlpha }
-            val alphaAnimator =
-                ObjectAnimator.ofFloat(shuffleButton, View.ALPHA, fromAlpha, toAlpha)
-            alphaAnimator.duration = 200
-            alphaAnimator.start()
-            shuffled = !shuffled
-            playerService?.setShuffle(shuffled)
-            MyApplication.setShuffleModeInPreferences(shuffled)
-        }
-
-        repeatButton.isEnabled = false
-        repeatButton.setOnClickListener {
-            var fromAlpha = FROM_ALPHA
-            var toAlpha = TO_ALPHA
-            if (repeated)
-                fromAlpha = toAlpha.also { toAlpha = fromAlpha }
-            val alphaAnimator = ObjectAnimator.ofFloat(repeatButton, View.ALPHA, fromAlpha, toAlpha)
-            alphaAnimator.duration = 200
-            alphaAnimator.start()
-            repeated = !repeated
-            playerService?.repeatMode = repeated
-        }
-
-        val toPlaylistButton = layout.findViewById<ImageButton>(R.id.to_playlist_button)
-        toPlaylistButton.setOnClickListener {
-            val bundle = Bundle()
-            bundle.putInt("playlist_id", MyApplication.getCurrentPlaylistIdFromPreferences())
-            findNavController().navigate(R.id.action_player_to_playlist, bundle)
-        }
-
         setupToolbar()
         setupDurationBarListener()
 
@@ -251,6 +202,65 @@ class MainPlayerFragment : Fragment() {
         drawer?.addDrawerListener(toggle)
         toggle.isDrawerIndicatorEnabled = true
         toggle.syncState()
+    }
+
+    private val playButtonClickListener = View.OnClickListener {
+        if (mediaController != null) {
+            if (isPlaying)
+                mediaController?.transportControls?.pause()
+            else
+                mediaController?.transportControls?.play()
+        }
+    }
+
+    private val nextButtonClickListener = View.OnClickListener {
+        if (mediaController != null) {
+            // nullify duration
+            layout.findViewById<SeekBar>(R.id.duration_bar).progress = 0
+            mediaController?.transportControls?.skipToNext()
+        }
+    }
+
+    private val prevButtonClickListener = View.OnClickListener {
+        if (mediaController != null) {
+            // nullify duration
+            layout.findViewById<SeekBar>(R.id.duration_bar).progress = 0
+            mediaController?.transportControls?.skipToPrevious()
+        }
+    }
+
+    private val shuffleButtonClickListener = View.OnClickListener {
+        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
+        var fromAlpha = FROM_ALPHA
+        var toAlpha = TO_ALPHA
+        if (shuffled)
+            fromAlpha = toAlpha.also { toAlpha = fromAlpha }
+        val alphaAnimator =
+            ObjectAnimator.ofFloat(shuffleButton, View.ALPHA, fromAlpha, toAlpha)
+        alphaAnimator.duration = 200
+        alphaAnimator.start()
+        shuffled = !shuffled
+        playerService?.setShuffle(shuffled)
+        MyApplication.setShuffleModeInPreferences(shuffled)
+    }
+
+    private val repeatButtonClickListener = View.OnClickListener {
+        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
+        var fromAlpha = FROM_ALPHA
+        var toAlpha = TO_ALPHA
+        if (repeated)
+            fromAlpha = toAlpha.also { toAlpha = fromAlpha }
+        val alphaAnimator = ObjectAnimator.ofFloat(repeatButton, View.ALPHA, fromAlpha, toAlpha)
+        alphaAnimator.duration = 200
+        alphaAnimator.start()
+        repeated = !repeated
+        playerService?.repeatMode = repeated
+    }
+
+    private val toPlaylistButtonClickListener = View.OnClickListener {
+        val bundle = Bundle()
+        bundle.putInt("playlist_id", MyApplication.getCurrentPlaylistIdFromPreferences())
+        findNavController().navigate(R.id.action_player_to_playlist, bundle)
     }
 
     private val metadataObserver = Observer<MediaMetadataCompat> { newMetadata ->

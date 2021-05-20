@@ -74,6 +74,14 @@ class MusicRepository : PlayerService.Repository,
         return playlists
     }
 
+    override fun deletePlaylist(context: Context, playlist: Playlist) {
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                AppDatabase.getInstance(context).playlistDao().deletePlaylist(playlist)
+            }
+        }
+    }
+
     override fun deleteTracks(context: Context, tracks: ArrayList<Track>, playlistId: Int) {
         MainScope().launch {
             withContext(Dispatchers.IO) {

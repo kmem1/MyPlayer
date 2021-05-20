@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * Класс, который содержит базу данных.
@@ -25,7 +26,24 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         private fun buildDatabase(context: Context): AppDatabase {
-            return Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME).build()
+            return Room.databaseBuilder(context, AppDatabase::class.java, DATABASE_NAME)
+                .addCallback(DB_CALLBACK)
+                .build()
+        }
+
+        private val DB_CALLBACK = object : RoomDatabase.Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                super.onCreate(db)
+                db.execSQL(
+                    """
+                        CREATE TRIGGER playlist_deleted AFTER DELETE ON playlist
+                        BEGIN
+                            DELETE FROM track_in_playlist
+                            WHERE old.playlist_id = playlist_id;
+                        END;
+                    """.trimIndent()
+                )
+            }
         }
     }
 

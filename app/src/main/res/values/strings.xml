@@ -23,4 +23,12 @@
     
     <string name="create_playlist_dialog_title">CreatePlaylist</string>
     <string name="create_playlist_dialog_hint">Playlist Name</string>
+    
+    <string name="delete_playlist_confirmation_dialog_title">Deleting</string>
+    <string name="delete_playlist_confirmation_dialog_message">
+        Are you sure about deleting playlist \"%1$s\"?
+    </string>
+
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
 </resources>
