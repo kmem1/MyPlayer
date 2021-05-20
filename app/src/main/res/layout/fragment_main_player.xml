@@ -118,7 +118,7 @@
 
         </LinearLayout>
 
-        <androidx.cardview.widget.CardView xmlns:card_view="http://schemas.android.com/apk/res-auto"
+        <androidx.cardview.widget.CardView
             android:id="@+id/card_view"
             android:layout_width="0dp"
             android:layout_height="0dp"
@@ -129,8 +129,8 @@
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.120000005"
             app:layout_constraintWidth_percent="0.82"
-            card_view:cardCornerRadius="10dp"
-            card_view:cardElevation="12dp">
+            app:cardCornerRadius="10dp"
+            app:cardElevation="12dp">
 
             <ImageView
                 android:id="@+id/album_image"
