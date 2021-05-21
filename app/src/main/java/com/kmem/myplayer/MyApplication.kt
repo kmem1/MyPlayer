@@ -10,6 +10,9 @@ class MyApplication : Application() {
 
         private const val APP_PREFERENCES_PLAYLIST_ID = "preferences_playlist_id"
         private const val APP_PREFERENCES_SHUFFLE = "preferences_shuffle"
+        private const val APP_PREFERENCES_REPEAT = "preferences_repeat"
+        private const val APP_PREFERENCES_DURATION_POSITION = "preferences_duration_position"
+        private const val APP_PREFERENCES_TRACK_POSITION = "preferences_track_position"
 
         lateinit var currentInstance: MyApplication
 
@@ -55,6 +58,69 @@ class MyApplication : Application() {
 
             with(sharedPref.edit()) {
                 putBoolean(APP_PREFERENCES_SHUFFLE, newValue)
+                apply()
+            }
+        }
+
+        fun getRepeatModeFromPreferences(): Boolean {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            return sharedPref?.getBoolean(APP_PREFERENCES_REPEAT, false) ?: false
+        }
+
+        fun setRepeatModeInPreferences(newValue: Boolean) {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            with(sharedPref.edit()) {
+                putBoolean(APP_PREFERENCES_REPEAT, newValue)
+                apply()
+            }
+        }
+
+        fun getDurationPositionFromPreferences(): Int {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            return sharedPref?.getInt(APP_PREFERENCES_DURATION_POSITION, 0) ?: 0
+        }
+
+        fun setDurationPositionFromPreferences(newValue: Int) {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            with(sharedPref.edit()) {
+                putInt(APP_PREFERENCES_DURATION_POSITION, newValue)
+                apply()
+            }
+        }
+
+        fun getTrackPositionFromPreferences(): Int {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            return sharedPref?.getInt(APP_PREFERENCES_TRACK_POSITION, 0) ?: 0
+        }
+
+        fun setTrackPositionFromPreferences(newValue: Int) {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            with(sharedPref.edit()) {
+                putInt(APP_PREFERENCES_TRACK_POSITION, newValue)
                 apply()
             }
         }

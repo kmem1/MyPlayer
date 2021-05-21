@@ -16,6 +16,7 @@ import androidx.fragment.app.DialogFragment
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.data.Playlist
@@ -37,6 +38,8 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
         suspend fun getPlaylists(context: Context): ArrayList<Playlist>
         fun deletePlaylist(context: Context, playlist: Playlist)
     }
+
+    var lastOpenedPlaylistId = MyApplication.getCurrentPlaylistIdFromPreferences()
 
     private lateinit var navList: RecyclerView
     private val navItemList: ArrayList<Screen> = arrayListOf(Screen.Home, Screen.SoundEffects)
@@ -102,10 +105,11 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
                 repository.addPlaylist(this@MainActivity, name)
                 playlists = repository.getPlaylists(this@MainActivity)
             }
+            val navController = findNavController(R.id.nav_host_fragment_content_main)
             val newPlaylistId = playlists.maxByOrNull { it.playlistId }?.playlistId ?: 1
+            navController.popBackStack(R.id.nav_player, false)
             val bundle = bundleOf("playlist_id" to newPlaylistId)
-            findNavController(R.id.nav_host_fragment_content_main)
-                .navigate(R.id.nav_playlist, bundle)
+            navController.navigate(R.id.nav_playlist, bundle)
             updateNavPlaylists()
             findViewById<DrawerLayout>(R.id.drawer).closeDrawers()
         }
@@ -119,6 +123,26 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
     ) {
         navPlaylists.remove(playlist)
         playlistsList.adapter?.notifyDataSetChanged()
+
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        if (navController.currentDestination?.id == R.id.nav_playlist) {
+            if (navPlaylists.isEmpty()) {
+                navController.popBackStack(R.id.nav_player, true)
+                navController.navigate(R.id.nav_player)
+                MyApplication.setCurrentPlaylistIdInPreferences(-1)
+            }
+            else if (lastOpenedPlaylistId == playlist.playlistId) {
+                navController.popBackStack(R.id.nav_player, false)
+                val nextPlaylist = navPlaylists.last()
+                val bundle = bundleOf("playlist_id" to nextPlaylist.playlistId)
+                navController.navigate(R.id.nav_playlist, bundle)
+                if (MyApplication.getCurrentPlaylistIdFromPreferences() == playlist.playlistId)
+                    MyApplication.setCurrentPlaylistIdInPreferences(nextPlaylist.playlistId)
+            }
+        }
+
+        if (MyApplication.getCurrentPlaylistIdFromPreferences() == playlist.playlistId)
+            MyApplication.setCurrentPlaylistIdInPreferences(navPlaylists.last().playlistId)
 
         repository.deletePlaylist(this@MainActivity, playlist)
     }

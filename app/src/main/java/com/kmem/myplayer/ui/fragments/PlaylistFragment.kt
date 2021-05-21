@@ -37,6 +37,7 @@ import com.kmem.myplayer.R
 import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.service.PlayerService
+import com.kmem.myplayer.ui.MainActivity
 import com.kmem.myplayer.ui.adapters.PlaylistAdapter
 import com.kmem.myplayer.ui.helpers.PlaylistItemTouchHelperCallback
 import kotlinx.coroutines.*
@@ -86,6 +87,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         layout = inflater.inflate(R.layout.fragment_playlist, container, false)
 
         playlistId = arguments?.getInt("playlist_id") ?: 0
+        (activity as MainActivity).lastOpenedPlaylistId = playlistId
 
         repository = MusicRepository.getInstance()
 
