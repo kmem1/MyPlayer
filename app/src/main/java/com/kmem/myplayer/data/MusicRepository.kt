@@ -53,11 +53,15 @@ class MusicRepository : PlayerService.Repository,
         return currentPlaylistRepository.isEnded()
     }
 
+    override fun savePlaylistState(playlistId: Int, uri: Uri, position: Int) {
+        TODO("Not yet implemented")
+    }
+
     override suspend fun addPlaylist(context: Context, playlistName: String) {
         var playlist: Playlist
 
         withContext(Dispatchers.IO) {
-            playlist = Playlist(0, playlistName)
+            playlist = Playlist(0, playlistName, Uri.EMPTY, 0)
             AppDatabase.getInstance(context).playlistDao().insertPlaylist(playlist)
         }
     }

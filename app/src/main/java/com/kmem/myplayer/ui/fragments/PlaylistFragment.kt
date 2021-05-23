@@ -25,6 +25,7 @@ import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
@@ -34,8 +35,7 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
-import com.kmem.myplayer.data.MusicRepository
-import com.kmem.myplayer.data.Track
+import com.kmem.myplayer.data.*
 import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.MainActivity
 import com.kmem.myplayer.ui.adapters.PlaylistAdapter
@@ -54,6 +54,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     interface Repository {
         suspend fun getTracksFromPlaylist(context: Context, playlistId: Int): LiveData<List<Track>>
         suspend fun getPlaylistName(context: Context, playlistId: Int): String
+        suspend fun getPlaylistState(context: Context, playlistId: Int): PlaylistState
         fun deleteTracks(context: Context, tracks: ArrayList<Track>, playlistId: Int)
         fun updatePositions(context: Context, tracks: ArrayList<Track>)
     }
@@ -69,6 +70,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     private lateinit var touchHelper: ItemTouchHelper
     private lateinit var layout: View
     private var playlistId: Int = 0
+    private var playlistState: PlaylistState = PlaylistState(Uri.EMPTY, 0)
     private var playerService: PlayerService? = null
     private var playerServiceBinder: PlayerService.PlayerServiceBinder? = null
     private var mediaController: MediaControllerCompat? = null
@@ -148,9 +150,11 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         )
 
         setupToolbar()
+        getPlaylistState()
 
         return layout
     }
+
 
     override fun onResume() {
         super.onResume()
@@ -237,6 +241,17 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         drawer?.addDrawerListener(toggle)
         toggle.isDrawerIndicatorEnabled = true
         toggle.syncState()
+    }
+
+    private fun getPlaylistState() {
+        MainScope().launch {
+            val state: PlaylistState
+            withContext(Dispatchers.IO) {
+                state = repository.getPlaylistState(requireContext(), playlistId)
+            }
+            playlistState = state
+            currentUri = state.uri
+        }
     }
 
     private suspend fun setToolbarTitle() {

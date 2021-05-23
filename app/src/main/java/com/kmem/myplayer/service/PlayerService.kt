@@ -55,11 +55,13 @@ class PlayerService : Service() {
         fun getPrevious(): Track?
         fun updateCurrentPlaylist(playlistId: Int, position: Int)
         fun isEnded(): Boolean
+        fun savePlaylistState(playlistId: Int, uri: Uri, position: Int)
     }
 
     companion object {
         const val ACTION_PLAY_SELECTED_TRACK = "play_selected"
         const val EXTRA_TRACK = "extra_track"
+        const val EXTRA_POSITION = "extra_position"
         private const val NOTIFICATION_ID = 404
         private const val NOTIFICATION_DEFAULT_CHANNEL_ID = "default_channel"
         private const val INACTIVITY_TIMEOUT = 600_000L // 10 minutes
@@ -410,6 +412,7 @@ class PlayerService : Service() {
                 startService(Intent(baseContext, PlayerService::class.java))
 
                 val track = extras.getParcelable<Track>(EXTRA_TRACK)!!
+                val position = extras?.getInt(EXTRA_POSITION) ?: -1
                 musicRepository.updateCurrentPlaylist(track.playlistId, track.position)
 
                 updateMetadataFromTrack(track)
