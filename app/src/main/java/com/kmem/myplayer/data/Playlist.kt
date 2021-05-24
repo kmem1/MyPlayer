@@ -13,7 +13,7 @@ data class Playlist(
     @ColumnInfo(name = "playlist_name")
     val name: String,
     @ColumnInfo(name = "last_played_uri")
-    val lastPlayedUri: Uri,
+    var lastPlayedUri: Uri,
     @ColumnInfo(name = "last_played_position")
-    val lastPlayedPosition: Int
+    var lastPlayedPosition: Int
 )

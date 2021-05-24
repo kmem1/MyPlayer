@@ -2,6 +2,7 @@ package com.kmem.myplayer.data
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.LiveData
 import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.service.PlayerService
@@ -51,10 +52,6 @@ class MusicRepository : PlayerService.Repository,
 
     override fun isEnded(): Boolean {
         return currentPlaylistRepository.isEnded()
-    }
-
-    override fun savePlaylistState(playlistId: Int, uri: Uri, position: Int) {
-        TODO("Not yet implemented")
     }
 
     override suspend fun addPlaylist(context: Context, playlistName: String) {
@@ -170,6 +167,32 @@ class MusicRepository : PlayerService.Repository,
         }
 
         return name
+    }
+
+    override fun savePlaylistState(playlistId: Int, uri: Uri, position: Int) {
+        Log.d("repository", "$playlistId $position")
+
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                val playlist = AppDatabase.getInstance(MyApplication.context())
+                    .playlistDao().getPlaylist(playlistId)
+                playlist.lastPlayedUri = uri
+                playlist.lastPlayedPosition = position
+
+                AppDatabase.getInstance(MyApplication.context())
+                    .playlistDao().updatePlaylist(playlist)
+            }
+        }
+    }
+
+    override suspend fun getPlaylistState(context: Context, playlistId: Int): PlaylistState {
+        val state: PlaylistState
+
+        withContext(Dispatchers.IO) {
+            state = AppDatabase.getInstance(context).playlistDao().getState(playlistId)
+        }
+
+        return state
     }
 
     private fun createTrackFromPath(

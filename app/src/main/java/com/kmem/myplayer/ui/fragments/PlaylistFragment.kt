@@ -34,6 +34,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.*
 import com.kmem.myplayer.service.PlayerService
@@ -344,6 +345,15 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     override fun onAudioClick(position: Int) {
         val bundle = Bundle()
         bundle.putParcelable(PlayerService.EXTRA_TRACK, audios[position])
+
+        if (playlistId != MyApplication.getCurrentPlaylistIdFromPreferences() &&
+            audios[position].uri == playlistState.uri) {
+                bundle.putInt(PlayerService.EXTRA_POSITION, playlistState.position)
+        } else {
+            bundle.putInt(PlayerService.EXTRA_POSITION, 0)
+        }
+
+
         mediaController?.transportControls?.sendCustomAction(
             PlayerService.ACTION_PLAY_SELECTED_TRACK,
             bundle

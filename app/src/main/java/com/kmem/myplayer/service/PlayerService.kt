@@ -33,17 +33,13 @@ import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.*
+import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.ui.MainActivity
 import kotlinx.coroutines.*
 import java.util.*
-
-/**
- *  Сервис, который проигрывает музыку. Предоставляет API через PlayerServiceBinder.
- *  Сервис имеет статус Foreground и может проигрывать музыку вне зависимости от проиложения.
- */
 
 class PlayerService : Service() {
 
@@ -179,17 +175,6 @@ class PlayerService : Service() {
         exoPlayer?.release()
     }
 
-    /*
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    suspend fun updatePositions() {
-        musicRepository?.updatePositions()
-    }
-
-    suspend fun addNewTracks() {
-        musicRepository?.addNewTracks()
-    }
-     */
-
     fun setShuffle(value: Boolean) {
         musicRepository.shuffle = value
     }
@@ -270,6 +255,7 @@ class PlayerService : Service() {
                     IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
                 )
                 exoPlayer!!.playWhenReady = true
+                saveCurrentPlaylistState(track)
             }
 
             mediaSession?.setPlaybackState(
@@ -302,6 +288,7 @@ class PlayerService : Service() {
             )
             currentState = PlaybackStateCompat.STATE_PAUSED
 
+            saveCurrentPlaylistState(musicRepository.getCurrent()!!)
             refreshNotificationAndForegroundStatus(currentState)
         }
 
@@ -331,6 +318,7 @@ class PlayerService : Service() {
             )
             currentState = PlaybackStateCompat.STATE_STOPPED
 
+            saveCurrentPlaylistState(musicRepository.getCurrent()!!)
             refreshNotificationAndForegroundStatus(currentState)
 
             stopSelf()
@@ -361,6 +349,7 @@ class PlayerService : Service() {
                 ).build()
             )
 
+            saveCurrentPlaylistState(track)
             refreshNotificationAndForegroundStatus(currentState)
         }
 
@@ -389,6 +378,7 @@ class PlayerService : Service() {
                 ).build()
             )
 
+            saveCurrentPlaylistState(track)
             refreshNotificationAndForegroundStatus(currentState)
         }
 
@@ -403,6 +393,7 @@ class PlayerService : Service() {
                 ).build()
             )
 
+            saveCurrentPlaylistState(musicRepository.getCurrent()!!)
             refreshNotificationAndForegroundStatus(currentState)
         }
 
@@ -412,12 +403,24 @@ class PlayerService : Service() {
                 startService(Intent(baseContext, PlayerService::class.java))
 
                 val track = extras.getParcelable<Track>(EXTRA_TRACK)!!
-                val position = extras?.getInt(EXTRA_POSITION) ?: -1
-                musicRepository.updateCurrentPlaylist(track.playlistId, track.position)
+                val position = extras.getInt(EXTRA_POSITION)
+
+                if (track.playlistId != MyApplication.getCurrentPlaylistIdFromPreferences()) {
+                    saveCurrentPlaylistState(musicRepository.getCurrent()!!)
+                    musicRepository.savePlaylistState(track.playlistId, track.uri, position)
+                    prepareToPlay(track.uri)
+                } else {
+                    prepareToPlay(track.uri)
+                    saveCurrentPlaylistState(track)
+                }
 
                 updateMetadataFromTrack(track)
 
-                prepareToPlay(track.uri)
+                musicRepository.updateCurrentPlaylist(track.playlistId, track.position)
+
+                if (position != 0) {
+                    exoPlayer?.seekTo(position.toLong())
+                }
 
                 if (!audioFocusRequested) {
                     audioFocusRequested = true
@@ -465,6 +468,14 @@ class PlayerService : Service() {
                 exoPlayer?.setMediaSource(mediaSource)
                 exoPlayer?.prepare()
             }
+        }
+
+        private fun saveCurrentPlaylistState(track: Track) {
+            musicRepository.savePlaylistState(
+                MyApplication.getCurrentPlaylistIdFromPreferences(),
+                track.uri,
+                exoPlayer!!.contentPosition.toInt()
+            )
         }
 
         @SuppressLint("WrongConstant")
