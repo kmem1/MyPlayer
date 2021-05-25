@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.media.session.MediaButtonReceiver
+import androidx.room.Index
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.extractor.ExtractorsFactory
@@ -39,6 +40,8 @@ import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.ui.MainActivity
 import kotlinx.coroutines.*
+import java.lang.IndexOutOfBoundsException
+import java.lang.RuntimeException
 import java.util.*
 
 class PlayerService : Service() {
@@ -61,6 +64,7 @@ class PlayerService : Service() {
         private const val NOTIFICATION_ID = 404
         private const val NOTIFICATION_DEFAULT_CHANNEL_ID = "default_channel"
         private const val INACTIVITY_TIMEOUT = 600_000L // 10 minutes
+        private const val UPDATE_STATE_INTERVAL = 10_000L // 10 seconds
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -89,6 +93,7 @@ class PlayerService : Service() {
     private var musicRepository: Repository = MusicRepository.getInstance()
 
     private var inactivityCheckJob: Job? = null
+    private var savePlaylistStateJob: Job? = null
 
     val currentMetadata: MutableLiveData<MediaMetadataCompat> =
         MutableLiveData<MediaMetadataCompat>()
@@ -173,6 +178,7 @@ class PlayerService : Service() {
         super.onDestroy()
         mediaSession?.release()
         exoPlayer?.release()
+        savePlaylistStateJob?.cancel()
     }
 
     fun setShuffle(value: Boolean) {
@@ -256,6 +262,7 @@ class PlayerService : Service() {
                 )
                 exoPlayer!!.playWhenReady = true
                 saveCurrentPlaylistState(track)
+                runPlaylistStateUpdater()
             }
 
             mediaSession?.setPlaybackState(
@@ -290,6 +297,7 @@ class PlayerService : Service() {
 
             saveCurrentPlaylistState(musicRepository.getCurrent()!!)
             refreshNotificationAndForegroundStatus(currentState)
+            savePlaylistStateJob?.cancel()
         }
 
         override fun onStop() {
@@ -320,6 +328,7 @@ class PlayerService : Service() {
 
             saveCurrentPlaylistState(musicRepository.getCurrent()!!)
             refreshNotificationAndForegroundStatus(currentState)
+            savePlaylistStateJob?.cancel()
 
             stopSelf()
         }
@@ -455,6 +464,7 @@ class PlayerService : Service() {
                 currentState = PlaybackStateCompat.STATE_PLAYING
 
                 refreshNotificationAndForegroundStatus(currentState)
+                runPlaylistStateUpdater()
             }
         }
 
@@ -509,6 +519,21 @@ class PlayerService : Service() {
                 metadata = metadataBuilder.build()
                 currentMetadata.value = metadata
                 mediaSession?.setMetadata(metadata)
+            }
+        }
+
+        private fun runPlaylistStateUpdater() {
+            if (savePlaylistStateJob == null || savePlaylistStateJob!!.isCancelled) {
+                savePlaylistStateJob = MainScope().launch {
+                    while (true) {
+                        try {
+                            saveCurrentPlaylistState(musicRepository.getCurrent()!!)
+                            delay(UPDATE_STATE_INTERVAL)
+                        } catch (e: IndexOutOfBoundsException) {
+                            // musicRepository is not ready
+                        }
+                    }
+                }
             }
         }
     }
