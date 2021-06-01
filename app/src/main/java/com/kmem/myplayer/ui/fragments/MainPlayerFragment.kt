@@ -5,12 +5,14 @@ import android.content.ComponentName
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.RemoteException
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,15 +21,18 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.TextView
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.navigation.fragment.findNavController
 import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
+import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.service.PlayerService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -48,6 +53,11 @@ class MainPlayerFragment : Fragment() {
         private const val TO_ALPHA = 1f
     }
 
+    interface Repository {
+        val isInitialized: LiveData<Boolean>
+    }
+
+    private val repository: Repository = MusicRepository.getInstance()
     private var playerServiceBinder: PlayerService.PlayerServiceBinder? = null
     private var mediaController: MediaControllerCompat? = null
     private var callback: MediaControllerCompat.Callback? = null
@@ -60,6 +70,7 @@ class MainPlayerFragment : Fragment() {
     private var shuffled = MyApplication.getShuffleModeFromPreferences()
     private var repeated = false
 
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -123,6 +134,7 @@ class MainPlayerFragment : Fragment() {
                     playerService = playerServiceBinder!!.getService()
                     shuffled = playerService?.getShuffle() ?: false
                     shuffleButton.alpha = if (shuffled) TO_ALPHA else FROM_ALPHA
+                    observeRepositoryInitialization()
                 } catch (e: RemoteException) {
                     mediaController = null
                 }
@@ -202,6 +214,16 @@ class MainPlayerFragment : Fragment() {
         drawer?.addDrawerListener(toggle)
         toggle.isDrawerIndicatorEnabled = true
         toggle.syncState()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun observeRepositoryInitialization() {
+        repository.isInitialized.observe(viewLifecycleOwner) { value ->
+            Log.d("qwe", "Init: $value ${playerService == null}")
+            if (value) {
+                playerService?.onRepositoryInitialized()
+            }
+        }
     }
 
     private val playButtonClickListener = View.OnClickListener {
@@ -289,6 +311,8 @@ class MainPlayerFragment : Fragment() {
         val secs = newMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) / 1000 % 60
         val duration = if (secs < 10) "$mins:0$secs" else "$mins:$secs" // "0:00" duration format
         maxDurationView.text = duration
+
+        Log.d("qwe", "metatatatatat")
     }
 
     private fun updateCurrentDurationView(position: Int) {

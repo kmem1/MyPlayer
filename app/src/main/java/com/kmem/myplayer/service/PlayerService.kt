@@ -25,7 +25,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.media.session.MediaButtonReceiver
-import androidx.room.Index
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.extractor.ExtractorsFactory
@@ -37,11 +36,11 @@ import com.google.android.exoplayer2.upstream.*
 import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.MusicRepository
+import com.kmem.myplayer.data.PlaylistState
 import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.ui.MainActivity
 import kotlinx.coroutines.*
 import java.lang.IndexOutOfBoundsException
-import java.lang.RuntimeException
 import java.util.*
 
 class PlayerService : Service() {
@@ -55,6 +54,7 @@ class PlayerService : Service() {
         fun updateCurrentPlaylist(playlistId: Int, position: Int)
         fun isEnded(): Boolean
         fun savePlaylistState(playlistId: Int, uri: Uri, position: Int)
+        suspend fun getPlaylistState(context: Context, playlistId: Int): PlaylistState
     }
 
     companion object {
@@ -91,6 +91,7 @@ class PlayerService : Service() {
     private var dataSourceFactory: DataSource.Factory? = null
 
     private var musicRepository: Repository = MusicRepository.getInstance()
+    private var isRepositoryInitialized = false
 
     private var inactivityCheckJob: Job? = null
     private var savePlaylistStateJob: Job? = null
@@ -179,6 +180,34 @@ class PlayerService : Service() {
         mediaSession?.release()
         exoPlayer?.release()
         savePlaylistStateJob?.cancel()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    fun onRepositoryInitialized() {
+        if (isRepositoryInitialized) return
+
+        MainScope().launch {
+            val track = musicRepository.getCurrent()
+
+            if (track != null) {
+                val state = musicRepository.getPlaylistState(
+                    this@PlayerService, MyApplication.getCurrentPlaylistIdFromPreferences()
+                )
+                prepareToPlay(track.uri)
+
+                exoPlayer?.seekTo(state.position.toLong())
+                mediaSession?.setPlaybackState(
+                    stateBuilder.setState(
+                        PlaybackStateCompat.STATE_STOPPED,
+                        exoPlayer?.contentPosition!!,
+                        1F
+                    ).build()
+                )
+
+                updateMetadataFromTrack(track)
+                isRepositoryInitialized = true
+            }
+        }
     }
 
     fun setShuffle(value: Boolean) {
@@ -468,58 +497,12 @@ class PlayerService : Service() {
             }
         }
 
-        private fun prepareToPlay(uri: Uri) {
-            if (uri != currentUri.value || repeatMode) {
-                currentUri.value = uri
-                val mediaItem = MediaItem.fromUri(uri)
-                val mediaSource =
-                    ProgressiveMediaSource.Factory(dataSourceFactory!!, extractorsFactory!!)
-                        .createMediaSource(mediaItem)
-                exoPlayer?.setMediaSource(mediaSource)
-                exoPlayer?.prepare()
-            }
-        }
-
         private fun saveCurrentPlaylistState(track: Track) {
             musicRepository.savePlaylistState(
                 MyApplication.getCurrentPlaylistIdFromPreferences(),
                 track.uri,
                 exoPlayer!!.contentPosition.toInt()
             )
-        }
-
-        @SuppressLint("WrongConstant")
-        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-        private fun updateMetadataFromTrack(track: Track) {
-            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, track.title)
-            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, track.artist)
-            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, track.artist)
-            metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, track.duration)
-            var metadata = metadataBuilder.build()
-            currentMetadata.value = metadata
-            mediaSession?.setMetadata(metadata)
-
-            MainScope().launch {
-                withContext(Dispatchers.IO) {
-                    val mmr = MediaMetadataRetriever().apply { setDataSource(context, track.uri) }
-                    val art = mmr.embeddedPicture
-                    if (art != null)
-                        metadataBuilder.putBitmap(
-                            MediaMetadataCompat.METADATA_KEY_ART, BitmapFactory.decodeByteArray(
-                                art, 0, art.size
-                            )
-                        )
-                    else
-                        metadataBuilder.putBitmap(
-                            MediaMetadataCompat.METADATA_KEY_ART,
-                            BitmapFactory.decodeResource(resources, R.drawable.without_album)
-                        )
-                }
-
-                metadata = metadataBuilder.build()
-                currentMetadata.value = metadata
-                mediaSession?.setMetadata(metadata)
-            }
         }
 
         private fun runPlaylistStateUpdater() {
@@ -535,6 +518,52 @@ class PlayerService : Service() {
                     }
                 }
             }
+        }
+    }
+
+    private fun prepareToPlay(uri: Uri) {
+        if (uri != currentUri.value || repeatMode) {
+            currentUri.value = uri
+            val mediaItem = MediaItem.fromUri(uri)
+            val mediaSource =
+                ProgressiveMediaSource.Factory(dataSourceFactory!!, extractorsFactory!!)
+                    .createMediaSource(mediaItem)
+            exoPlayer?.setMediaSource(mediaSource)
+            exoPlayer?.prepare()
+        }
+    }
+
+    @SuppressLint("WrongConstant")
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun updateMetadataFromTrack(track: Track) {
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, track.title)
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, track.artist)
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, track.artist)
+        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, track.duration)
+        metadataBuilder.putBitmap(
+            MediaMetadataCompat.METADATA_KEY_ART,
+            BitmapFactory.decodeResource(resources, R.drawable.without_album)
+        )
+        var metadata = metadataBuilder.build()
+        currentMetadata.value = metadata
+        mediaSession?.setMetadata(metadata)
+
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                val mmr = MediaMetadataRetriever().apply { setDataSource(context, track.uri) }
+                val art = mmr.embeddedPicture
+                if (art != null) {
+                    metadataBuilder.putBitmap(
+                        MediaMetadataCompat.METADATA_KEY_ART, BitmapFactory.decodeByteArray(
+                            art, 0, art.size
+                        )
+                    )
+                }
+            }
+
+            metadata = metadataBuilder.build()
+            currentMetadata.value = metadata
+            mediaSession?.setMetadata(metadata)
         }
     }
 

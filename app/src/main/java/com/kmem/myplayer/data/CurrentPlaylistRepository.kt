@@ -31,7 +31,7 @@ class CurrentPlaylistRepository {
                 shuffleData.remove(currTrack)
                 stackIndex = 0
                 MainScope().launch {
-                    removeStackPositionsInDatabase()
+                    removeStackPositionsFromDatabase()
                     currTrack.positionInStack = stackIndex
                     updateTrackInDatabase(currTrack)
                 }
@@ -49,6 +49,7 @@ class CurrentPlaylistRepository {
 
                 if (shuffle) {
                     shuffleData.addAll(data)
+                    shuffleData.shuffle()
                     shuffleStack.addAll(
                         AppDatabase.getInstance(MyApplication.context())
                             .trackDao().getShuffleStackForPlaylist(playlistId)
@@ -58,8 +59,14 @@ class CurrentPlaylistRepository {
                     val currTrack = shuffleStack[stackIndex]
                     currentUri = currTrack.uri
                     currentItemIndex = data.indexOfFirst { it.uri == currentUri }
+                } else {
+                    val savedState = AppDatabase.getInstance(MyApplication.context())
+                        .playlistDao().getState(playlistId)
+                    currentItemIndex = data.indexOfFirst { it.uri == savedState.uri }
                 }
             }
+
+            MusicRepository.getInstance().isInitialized.value = true
         }
     }
 
@@ -168,7 +175,7 @@ class CurrentPlaylistRepository {
         }
     }
 
-    private suspend fun removeStackPositionsInDatabase() {
+    private suspend fun removeStackPositionsFromDatabase() {
         for (track in data) {
             track.positionInStack = -1
         }

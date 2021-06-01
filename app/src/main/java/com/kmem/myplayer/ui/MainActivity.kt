@@ -24,11 +24,6 @@ import com.kmem.myplayer.ui.adapters.NavListAdapter
 import com.kmem.myplayer.ui.adapters.NavPlaylistsAdapter
 import kotlinx.coroutines.*
 
-/**
- *  Главная активность приложения. Она запускается при открытии приложения.
- *  Отвечает за запуск остальных экранов приложения.
- */
-
 class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsAdapter.Listener,
         CreatePlaylistDialogFragment.CreatePlaylistDialogListener,
         DeletePlaylistConfirmationDialogFragment.DeletePlaylistConfirmationDialogListener {

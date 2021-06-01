@@ -2,11 +2,12 @@ package com.kmem.myplayer.data
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.MainActivity
+import com.kmem.myplayer.ui.fragments.MainPlayerFragment
 import com.kmem.myplayer.ui.fragments.PlaylistFragment
 import com.kmem.myplayer.utils.MetadataHelper
 import com.kmem.myplayer.viewmodels.FileChooserViewModel
@@ -16,7 +17,8 @@ import java.io.File
 class MusicRepository : PlayerService.Repository,
                         PlaylistFragment.Repository,
                         FileChooserViewModel.Repository,
-                        MainActivity.Repository {
+                        MainActivity.Repository,
+                        MainPlayerFragment.Repository {
 
     companion object {
         private var instance: MusicRepository? = null
@@ -27,6 +29,8 @@ class MusicRepository : PlayerService.Repository,
     }
 
     private val currentPlaylistRepository: CurrentPlaylistRepository = CurrentPlaylistRepository()
+
+    override val isInitialized = MutableLiveData<Boolean>(false)
 
     override var shuffle: Boolean = MyApplication.getShuffleModeFromPreferences()
         set(value) {
@@ -170,8 +174,6 @@ class MusicRepository : PlayerService.Repository,
     }
 
     override fun savePlaylistState(playlistId: Int, uri: Uri, position: Int) {
-        Log.d("repository", "$playlistId $position")
-
         MainScope().launch {
             withContext(Dispatchers.IO) {
                 val playlist = AppDatabase.getInstance(MyApplication.context())
