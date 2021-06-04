@@ -13,6 +13,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -184,30 +185,33 @@ class PlayerService : Service() {
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     fun onRepositoryInitialized() {
-        if (isRepositoryInitialized) return
-
         MainScope().launch {
             val track = musicRepository.getCurrent()
 
-            if (track != null) {
+            if (track != null && !isRepositoryInitialized) {
+                Log.d("qwe", "service init")
                 val state = musicRepository.getPlaylistState(
                     this@PlayerService, MyApplication.getCurrentPlaylistIdFromPreferences()
                 )
-                prepareToPlay(track.uri)
+                prepareToPlay(track)
 
                 exoPlayer?.seekTo(state.position.toLong())
                 mediaSession?.setPlaybackState(
                     stateBuilder.setState(
-                        PlaybackStateCompat.STATE_STOPPED,
+                        MyApplication.getPlaybackStateFromPreferences(),
                         exoPlayer?.contentPosition!!,
                         1F
                     ).build()
                 )
-
-                updateMetadataFromTrack(track)
                 isRepositoryInitialized = true
             }
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    fun onTracksDeleted() {
+        // update player with new track
+        mediaSessionCallback.onRemoveQueueItem(null)
     }
 
     fun setShuffle(value: Boolean) {
@@ -236,7 +240,11 @@ class PlayerService : Service() {
      */
 
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
-        var currentState = PlaybackStateCompat.STATE_STOPPED
+        var currentState = MyApplication.getPlaybackStateFromPreferences()
+        set(value) {
+            MyApplication.setPlaybackStateFromPreferences(value)
+            field = value
+        }
 
         init {
             mediaSession?.setPlaybackState(
@@ -258,15 +266,14 @@ class PlayerService : Service() {
                 if (track == null) {
                     Toast.makeText(
                         applicationContext,
-                        "Swipe Right to Left to add items to playlist",
+                        "Empty Playlist",
                         Toast.LENGTH_SHORT
                     ).show()
+                    onStop()
                     return
                 }
 
-                updateMetadataFromTrack(track)
-
-                prepareToPlay(track.uri)
+                prepareToPlay(track)
 
                 if (!audioFocusRequested) {
                     audioFocusRequested = true
@@ -324,7 +331,7 @@ class PlayerService : Service() {
             )
             currentState = PlaybackStateCompat.STATE_PAUSED
 
-            saveCurrentPlaylistState(musicRepository.getCurrent()!!)
+            saveCurrentPlaylistState(musicRepository.getCurrent())
             refreshNotificationAndForegroundStatus(currentState)
             savePlaylistStateJob?.cancel()
         }
@@ -355,11 +362,9 @@ class PlayerService : Service() {
             )
             currentState = PlaybackStateCompat.STATE_STOPPED
 
-            saveCurrentPlaylistState(musicRepository.getCurrent()!!)
+            saveCurrentPlaylistState(musicRepository.getCurrent())
             refreshNotificationAndForegroundStatus(currentState)
             savePlaylistStateJob?.cancel()
-
-            stopSelf()
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -369,15 +374,14 @@ class PlayerService : Service() {
             if (track == null) {
                 Toast.makeText(
                     applicationContext,
-                    "Swipe Right to Left to add items to playlist",
+                    "Empty Playlist",
                     Toast.LENGTH_SHORT
                 ).show()
+                onStop()
                 return
             }
 
-            updateMetadataFromTrack(track)
-
-            prepareToPlay(track.uri)
+            prepareToPlay(track)
 
             mediaSession?.setPlaybackState(
                 stateBuilder.setState(
@@ -398,15 +402,14 @@ class PlayerService : Service() {
             if (track == null) {
                 Toast.makeText(
                     applicationContext,
-                    "Swipe Right to Left to add items to playlist",
+                    "Empty Playlist",
                     Toast.LENGTH_SHORT
                 ).show()
+                onStop()
                 return
             }
 
-            updateMetadataFromTrack(track)
-
-            prepareToPlay(track.uri)
+            prepareToPlay(track)
 
             mediaSession?.setPlaybackState(
                 stateBuilder.setState(
@@ -431,8 +434,32 @@ class PlayerService : Service() {
                 ).build()
             )
 
-            saveCurrentPlaylistState(musicRepository.getCurrent()!!)
+            saveCurrentPlaylistState(musicRepository.getCurrent())
             refreshNotificationAndForegroundStatus(currentState)
+        }
+
+        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+        override fun onRemoveQueueItem(description: MediaDescriptionCompat?) {
+            if (musicRepository.getCurrent()?.uri != currentUri.value) {
+                val track = musicRepository.getCurrent()
+
+                if (track == null) {
+                    onStop()
+                    return
+                }
+
+                prepareToPlay(track)
+
+                mediaSession?.setPlaybackState(
+                    stateBuilder.setState(
+                        currentState,
+                        exoPlayer?.contentPosition!!,
+                        1F
+                    ).build()
+                )
+
+                saveCurrentPlaylistState(musicRepository.getCurrent())
+            }
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -444,15 +471,14 @@ class PlayerService : Service() {
                 val position = extras.getInt(EXTRA_POSITION)
 
                 if (track.playlistId != MyApplication.getCurrentPlaylistIdFromPreferences()) {
-                    saveCurrentPlaylistState(musicRepository.getCurrent()!!)
+                    if (musicRepository.getCurrent() != null)
+                        saveCurrentPlaylistState(musicRepository.getCurrent())
                     musicRepository.savePlaylistState(track.playlistId, track.uri, position)
-                    prepareToPlay(track.uri)
+                    prepareToPlay(track)
                 } else {
-                    prepareToPlay(track.uri)
+                    prepareToPlay(track)
                     saveCurrentPlaylistState(track)
                 }
-
-                updateMetadataFromTrack(track)
 
                 musicRepository.updateCurrentPlaylist(track.playlistId, track.position)
 
@@ -497,12 +523,18 @@ class PlayerService : Service() {
             }
         }
 
-        private fun saveCurrentPlaylistState(track: Track) {
-            musicRepository.savePlaylistState(
-                MyApplication.getCurrentPlaylistIdFromPreferences(),
-                track.uri,
-                exoPlayer!!.contentPosition.toInt()
-            )
+        private fun saveCurrentPlaylistState(track: Track?) {
+            if (track != null) {
+                musicRepository.savePlaylistState(
+                    MyApplication.getCurrentPlaylistIdFromPreferences(),
+                    track.uri,
+                    exoPlayer!!.contentPosition.toInt()
+                )
+            } else {
+                musicRepository.savePlaylistState(
+                    MyApplication.getCurrentPlaylistIdFromPreferences(), Uri.EMPTY, 0
+                )
+            }
         }
 
         private fun runPlaylistStateUpdater() {
@@ -512,8 +544,9 @@ class PlayerService : Service() {
                         try {
                             saveCurrentPlaylistState(musicRepository.getCurrent()!!)
                             delay(UPDATE_STATE_INTERVAL)
-                        } catch (e: IndexOutOfBoundsException) {
+                        } catch (e: Exception) {
                             // musicRepository is not ready
+                            delay(UPDATE_STATE_INTERVAL)
                         }
                     }
                 }
@@ -521,10 +554,14 @@ class PlayerService : Service() {
         }
     }
 
-    private fun prepareToPlay(uri: Uri) {
-        if (uri != currentUri.value || repeatMode) {
-            currentUri.value = uri
-            val mediaItem = MediaItem.fromUri(uri)
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private fun prepareToPlay(track: Track) {
+        if (track.uri != currentUri.value || repeatMode) {
+            if (track.uri != currentUri.value) {
+                updateMetadataFromTrack(track)
+            }
+            currentUri.value = track.uri
+            val mediaItem = MediaItem.fromUri(track.uri)
             val mediaSource =
                 ProgressiveMediaSource.Factory(dataSourceFactory!!, extractorsFactory!!)
                     .createMediaSource(mediaItem)
@@ -628,7 +665,7 @@ class PlayerService : Service() {
             return mediaSession?.sessionToken
         }
 
-        fun getLiveMetadata(): LiveData<MediaMetadataCompat> {
+        fun getLiveMetadata(): LiveData<MediaMetadataCompat?> {
             return currentMetadata
         }
 
@@ -658,7 +695,7 @@ class PlayerService : Service() {
                     withContext(Dispatchers.Default) {
                         delay(INACTIVITY_TIMEOUT)
                     }
-                    mediaSessionCallback.onStop()
+                    stopSelf()
                 }
             }
             else -> {

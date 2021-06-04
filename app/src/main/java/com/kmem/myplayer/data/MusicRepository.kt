@@ -87,26 +87,24 @@ class MusicRepository : PlayerService.Repository,
         }
     }
 
-    override fun deleteTracks(context: Context, tracks: ArrayList<Track>, playlistId: Int) {
-        MainScope().launch {
-            withContext(Dispatchers.IO) {
-                AppDatabase.getInstance(context).trackDao().deleteAll(tracks)
+    override suspend fun deleteTracks(context: Context, tracks: ArrayList<Track>, playlistId: Int) {
+        withContext(Dispatchers.IO) {
+            AppDatabase.getInstance(context).trackDao().deleteAll(tracks)
 
-                // update positions of tracks after delete
-                val tracksInPlaylist = AppDatabase.getInstance(context)
-                    .trackDao().getTracksFromPlaylist(playlistId)
-                val size = tracksInPlaylist.size
-                for (i in 0 until size) {
-                    tracksInPlaylist[i].position = i
-                }
-
-                AppDatabase.getInstance(context).trackDao().updateAll(tracksInPlaylist)
+            // update positions of tracks after delete
+            val tracksInPlaylist = AppDatabase.getInstance(context)
+                .trackDao().getTracksFromPlaylist(playlistId)
+            val size = tracksInPlaylist.size
+            for (i in 0 until size) {
+                tracksInPlaylist[i].position = i
             }
 
-            val playlistIdOfTracks = tracks[0].playlistId
-            if (playlistIdOfTracks == MyApplication.getCurrentPlaylistIdFromPreferences())
-                currentPlaylistRepository.deleteTracks(tracks)
+            AppDatabase.getInstance(context).trackDao().updateAll(tracksInPlaylist)
         }
+
+        val playlistIdOfTracks = tracks[0].playlistId
+        if (playlistIdOfTracks == MyApplication.getCurrentPlaylistIdFromPreferences())
+            currentPlaylistRepository.deleteTracks(tracks)
     }
 
     override fun updatePositions(context: Context, tracks: ArrayList<Track>) {
@@ -178,6 +176,7 @@ class MusicRepository : PlayerService.Repository,
             withContext(Dispatchers.IO) {
                 val playlist = AppDatabase.getInstance(MyApplication.context())
                     .playlistDao().getPlaylist(playlistId)
+                if (playlist == null) return@withContext
                 playlist.lastPlayedUri = uri
                 playlist.lastPlayedPosition = position
 

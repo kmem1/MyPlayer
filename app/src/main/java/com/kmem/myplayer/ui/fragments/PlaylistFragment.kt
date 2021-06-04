@@ -56,7 +56,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         suspend fun getTracksFromPlaylist(context: Context, playlistId: Int): LiveData<List<Track>>
         suspend fun getPlaylistName(context: Context, playlistId: Int): String
         suspend fun getPlaylistState(context: Context, playlistId: Int): PlaylistState
-        fun deleteTracks(context: Context, tracks: ArrayList<Track>, playlistId: Int)
+        suspend fun deleteTracks(context: Context, tracks: ArrayList<Track>, playlistId: Int)
         fun updatePositions(context: Context, tracks: ArrayList<Track>)
     }
 
@@ -180,6 +180,7 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         list.adapter?.notifyDataSetChanged()
     }
 
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private val deleteTracksButtonClickListener = View.OnClickListener {
         val tracks = ArrayList<Track>()
         for (pos in selectedCheckboxesPositions)
@@ -188,7 +189,14 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         deleteMode = false
         onDeleteModeChanged()
 
-        repository.deleteTracks(requireContext(), tracks, playlistId)
+        if (tracks.isNotEmpty()) {
+            MainScope().launch {
+                repository.deleteTracks(requireContext(), tracks, playlistId)
+                playerService?.onTracksDeleted()
+            }
+        } else {
+            list.adapter?.notifyDataSetChanged()
+        }
     }
 
     private val selectAllButtonClickListener = View.OnClickListener {

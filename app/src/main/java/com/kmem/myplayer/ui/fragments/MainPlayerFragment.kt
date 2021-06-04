@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -65,6 +66,7 @@ class MainPlayerFragment : Fragment() {
     private var playerService: PlayerService? = null
     private lateinit var layout: View
     private var isPlaying = false
+    private var currentState = -1
     private var durationBarJob: Job? = null
     private var isStarted = false
     private var shuffled = MyApplication.getShuffleModeFromPreferences()
@@ -101,8 +103,17 @@ class MainPlayerFragment : Fragment() {
 
         callback = object : MediaControllerCompat.Callback() {
             override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
-                if (state == null)
+                if (state == null) return
+
+                currentState = state.state
+
+                Log.d("qwe", "state changed ${state.state}")
+
+                if (state.state == PlaybackStateCompat.STATE_STOPPED) {
+                    clearPlayer()
+                    Log.d("qwe", "onStop")
                     return
+                }
 
                 val positionView = layout.findViewById<SeekBar>(R.id.duration_bar)
                 isPlaying = state.state == PlaybackStateCompat.STATE_PLAYING
@@ -285,7 +296,10 @@ class MainPlayerFragment : Fragment() {
         findNavController().navigate(R.id.action_player_to_playlist, bundle)
     }
 
-    private val metadataObserver = Observer<MediaMetadataCompat> { newMetadata ->
+    private val metadataObserver = Observer<MediaMetadataCompat?> { newMetadata ->
+        Log.d("state", "$currentState")
+        if (currentState == PlaybackStateCompat.STATE_STOPPED) return@Observer
+
         val artistView = layout.findViewById<TextView>(R.id.artist)
         val titleView = layout.findViewById<TextView>(R.id.track_title)
         val albumImageView = layout.findViewById<ImageView>(R.id.album_image)
@@ -311,8 +325,26 @@ class MainPlayerFragment : Fragment() {
         val secs = newMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) / 1000 % 60
         val duration = if (secs < 10) "$mins:0$secs" else "$mins:$secs" // "0:00" duration format
         maxDurationView.text = duration
+    }
 
-        Log.d("qwe", "metatatatatat")
+    private fun clearPlayer() {
+        val artistView = layout.findViewById<TextView>(R.id.artist)
+        val titleView = layout.findViewById<TextView>(R.id.track_title)
+        val albumImageView = layout.findViewById<ImageView>(R.id.album_image)
+        val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
+        val maxDurationView = layout.findViewById<TextView>(R.id.max_duration)
+        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
+        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
+
+        artistView.text = ""
+        titleView.text = ""
+        durationBar.isEnabled = false
+        maxDurationView.text = "0:00"
+        albumImageView.setImageBitmap(
+            BitmapFactory.decodeResource(resources, R.drawable.without_album))
+
+        shuffleButton.isEnabled = false
+        repeatButton.isEnabled = false
     }
 
     private fun updateCurrentDurationView(position: Int) {

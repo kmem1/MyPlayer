@@ -36,7 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
                 super.onCreate(db)
                 db.execSQL(
                     """
-                        CREATE TRIGGER playlist_deleted AFTER DELETE ON playlist
+                        CREATE TRIGGER IF NOT EXISTS playlist_deleted AFTER DELETE ON playlist
                         BEGIN
                             DELETE FROM track_in_playlist
                             WHERE old.playlist_id = playlist_id;

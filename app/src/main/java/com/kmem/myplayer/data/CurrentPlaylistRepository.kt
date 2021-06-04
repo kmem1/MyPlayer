@@ -15,6 +15,7 @@ class CurrentPlaylistRepository {
     private var stackIndex = 0
     private var maxIndex = 0
     private var playlistId = MyApplication.getCurrentPlaylistIdFromPreferences()
+    private var isInitialized = false
     var currentUri: Uri? = null
     var currentItemIndex = 0
     var shuffle = MyApplication.getShuffleModeFromPreferences()
@@ -66,7 +67,10 @@ class CurrentPlaylistRepository {
                 }
             }
 
-            MusicRepository.getInstance().isInitialized.value = true
+            if (!isInitialized) {
+                MusicRepository.getInstance().isInitialized.value = true
+                isInitialized = true
+            }
         }
     }
 
@@ -90,6 +94,7 @@ class CurrentPlaylistRepository {
                 .trackDao().getTracksFromPlaylist(playlistId)
             )
             maxIndex = data.lastIndex
+            currentItemIndex = 0
 
             val isAlreadyShuffled = shuffleStack.size == 1 && shuffleStack[0].uri == currentUri
             if (shuffle || isAlreadyShuffled) {
@@ -124,12 +129,21 @@ class CurrentPlaylistRepository {
         if (shuffle || isAlreadyShuffled) {
             shuffleData.removeAll(tracks)
             shuffleStack.removeAll(tracks)
-            indexOfCurrentTrack = shuffleStack.indexOfFirst { it.uri == currentUri }
-            if (indexOfCurrentTrack == -1) {
-                if (stackIndex > shuffleStack.lastIndex)
-                    stackIndex = shuffleStack.lastIndex
+            if (shuffleStack.isEmpty()) {
+                shuffleStack.add(shuffleData.removeAt(0))
+                stackIndex = 0
             } else {
-                stackIndex = indexOfCurrentTrack
+                indexOfCurrentTrack = shuffleStack.indexOfFirst { it.uri == currentUri }
+                if (indexOfCurrentTrack == -1) {
+                    if (stackIndex > shuffleStack.lastIndex)
+                        stackIndex = shuffleStack.lastIndex
+                } else {
+                    stackIndex = indexOfCurrentTrack
+                }
+            }
+            currentItemIndex = data.indexOfFirst { it.uri == shuffleStack[stackIndex].uri }
+            MainScope().launch {
+                updateStackPositionsInDatabase()
             }
         }
     }
@@ -175,6 +189,15 @@ class CurrentPlaylistRepository {
         }
     }
 
+    private suspend fun updateStackPositionsInDatabase() {
+        withContext(Dispatchers.IO) {
+            for ((index, track) in shuffleStack.withIndex()) {
+                track.positionInStack = index
+                updateTrackInDatabase(track)
+            }
+        }
+    }
+
     private suspend fun removeStackPositionsFromDatabase() {
         for (track in data) {
             track.positionInStack = -1
@@ -216,7 +239,7 @@ class CurrentPlaylistRepository {
     }
 
     fun getCurrent(): Track? {
-        if (maxIndex == -1) return null
+        if (maxIndex == -1 || currentItemIndex < 0) return null
         currentUri = data[currentItemIndex].uri
 
         return data[currentItemIndex]

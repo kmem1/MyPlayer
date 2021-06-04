@@ -13,11 +13,33 @@ class MyApplication : Application() {
         private const val APP_PREFERENCES_REPEAT = "preferences_repeat"
         private const val APP_PREFERENCES_DURATION_POSITION = "preferences_duration_position"
         private const val APP_PREFERENCES_TRACK_POSITION = "preferences_track_position"
+        private const val APP_PREFERENCES_PLAYBACK_STATE = "preferences_playback_state"
 
         lateinit var currentInstance: MyApplication
 
         fun context(): Context {
             return currentInstance.applicationContext
+        }
+
+        fun getPlaybackStateFromPreferences(): Int {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            return sharedPref?.getInt(APP_PREFERENCES_PLAYBACK_STATE, 1) ?: 1
+        }
+
+        fun setPlaybackStateFromPreferences(state: Int) {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            with(sharedPref.edit()) {
+                putInt(APP_PREFERENCES_PLAYBACK_STATE, state)
+                apply()
+            }
         }
 
         fun getCurrentPlaylistIdFromPreferences(): Int {
