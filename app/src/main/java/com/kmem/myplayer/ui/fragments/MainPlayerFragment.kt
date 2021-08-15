@@ -1,10 +1,13 @@
 package com.kmem.myplayer.ui.fragments
 
+import android.Manifest
 import android.animation.ObjectAnimator
 import android.content.ComponentName
+import android.content.Context
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
@@ -17,15 +20,13 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.SeekBar
+import android.widget.*
 import android.widget.SeekBar.OnSeekBarChangeListener
-import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.core.content.ContextCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
@@ -34,11 +35,9 @@ import androidx.navigation.fragment.findNavController
 import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.MusicRepository
+import com.kmem.myplayer.data.Playlist
 import com.kmem.myplayer.service.PlayerService
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
 
 /**
@@ -52,10 +51,14 @@ class MainPlayerFragment : Fragment() {
     companion object {
         private const val FROM_ALPHA = 0.3f
         private const val TO_ALPHA = 1f
+        private const val PERMISSION_STRING = Manifest.permission.READ_EXTERNAL_STORAGE
+        private const val PERMISSION_CODE = 600
     }
 
     interface Repository {
         val isInitialized: LiveData<Boolean>
+
+        suspend fun getPlaylists(context: Context): ArrayList<Playlist>
     }
 
     private val repository: Repository = MusicRepository.getInstance()
@@ -94,6 +97,14 @@ class MainPlayerFragment : Fragment() {
         repeatButton.setOnClickListener(repeatButtonClickListener)
         toPlaylistButton.setOnClickListener(toPlaylistButtonClickListener)
 
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                if (repository.getPlaylists(requireContext()).isNotEmpty()) {
+                    toPlaylistButton.visibility = View.VISIBLE
+                }
+            }
+        }
+
         shuffleButton.isEnabled = false
         repeatButton.isEnabled = false
 
@@ -111,7 +122,9 @@ class MainPlayerFragment : Fragment() {
 
                 if (state.state == PlaybackStateCompat.STATE_STOPPED) {
                     clearPlayer()
+                    durationBarJob?.cancel()
                     Log.d("qwe", "onStop")
+                    checkPlaylistExistence()
                     return
                 }
 
@@ -144,7 +157,9 @@ class MainPlayerFragment : Fragment() {
                         .observe(viewLifecycleOwner, metadataObserver)
                     playerService = playerServiceBinder!!.getService()
                     shuffled = playerService?.getShuffle() ?: false
+                    repeated = playerService?.repeatMode ?: false
                     shuffleButton.alpha = if (shuffled) TO_ALPHA else FROM_ALPHA
+                    repeatButton.alpha = if (repeated) TO_ALPHA else FROM_ALPHA
                     observeRepositoryInitialization()
                 } catch (e: RemoteException) {
                     mediaController = null
@@ -166,6 +181,7 @@ class MainPlayerFragment : Fragment() {
             BIND_AUTO_CREATE
         )
 
+        checkPlaylistExistence()
         setupToolbar()
         setupDurationBarListener()
 
@@ -174,6 +190,9 @@ class MainPlayerFragment : Fragment() {
 
     override fun onStart() {
         super.onStart()
+
+        if (!checkPermission()) requestPermission()
+
         val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
         // update duration if there is already playing track on pause
         durationBar.progress = mediaController?.playbackState?.position?.toInt() ?: 0
@@ -208,6 +227,20 @@ class MainPlayerFragment : Fragment() {
         activity?.unbindService(serviceConnection!!)
     }
 
+    /**
+     * Hides "To playlist" button if there is no playlist created
+     */
+    private fun checkPlaylistExistence() {
+        val toPlaylistButton = layout.findViewById<ImageButton>(R.id.to_playlist_button)
+        val playlists = ArrayList<Playlist>()
+        MainScope().launch {
+            withContext(Dispatchers.IO) {
+                playlists.addAll(repository.getPlaylists(requireContext()))
+            }
+            if (playlists.isEmpty()) toPlaylistButton.visibility = View.GONE
+        }
+    }
+
     private fun setupToolbar() {
         val toolbar = layout.findViewById<Toolbar>(R.id.toolbar)
         val drawer = activity?.findViewById<DrawerLayout>(R.id.drawer)
@@ -230,7 +263,6 @@ class MainPlayerFragment : Fragment() {
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun observeRepositoryInitialization() {
         repository.isInitialized.observe(viewLifecycleOwner) { value ->
-            Log.d("qwe", "Init: $value ${playerService == null}")
             if (value) {
                 playerService?.onRepositoryInitialized()
             }
@@ -292,13 +324,18 @@ class MainPlayerFragment : Fragment() {
 
     private val toPlaylistButtonClickListener = View.OnClickListener {
         val bundle = Bundle()
+        val playlistId = MyApplication.getCurrentPlaylistIdFromPreferences()
+        if (playlistId == -1) {
+            Toast.makeText(requireContext(), "No playlist created", Toast.LENGTH_SHORT).show()
+            return@OnClickListener
+        }
         bundle.putInt("playlist_id", MyApplication.getCurrentPlaylistIdFromPreferences())
         findNavController().navigate(R.id.action_player_to_playlist, bundle)
     }
 
     private val metadataObserver = Observer<MediaMetadataCompat?> { newMetadata ->
         Log.d("state", "$currentState")
-        if (currentState == PlaybackStateCompat.STATE_STOPPED) return@Observer
+        if (currentState == PlaybackStateCompat.STATE_STOPPED || currentState == -1) return@Observer
 
         val artistView = layout.findViewById<TextView>(R.id.artist)
         val titleView = layout.findViewById<TextView>(R.id.track_title)
@@ -335,16 +372,21 @@ class MainPlayerFragment : Fragment() {
         val maxDurationView = layout.findViewById<TextView>(R.id.max_duration)
         val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
         val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
+        val playButton = layout.findViewById<ImageView>(R.id.play_button)
 
         artistView.text = ""
         titleView.text = ""
         durationBar.isEnabled = false
+        durationBar.progress = 0
+        updateCurrentDurationView(0)
         maxDurationView.text = "0:00"
         albumImageView.setImageBitmap(
             BitmapFactory.decodeResource(resources, R.drawable.without_album))
 
         shuffleButton.isEnabled = false
         repeatButton.isEnabled = false
+        isPlaying = false
+        playButton.setImageResource(R.drawable.baseline_play_arrow_24)
     }
 
     private fun updateCurrentDurationView(position: Int) {
@@ -396,4 +438,24 @@ class MainPlayerFragment : Fragment() {
         }
     }
 
+    private fun checkPermission(): Boolean {
+        // shouldn't ask for permission if it isn't granted before
+        if (!MyApplication.wasPermissionAlreadyGranted()) return true
+
+        return ContextCompat.checkSelfPermission(
+            requireContext(),
+            PERMISSION_STRING
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestPermission() {
+        if (ContextCompat.checkSelfPermission(requireContext(), PlaylistFragment.PERMISSION_STRING)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(PlaylistFragment.PERMISSION_STRING),
+                PERMISSION_CODE
+            )
+        }
+    }
 }

@@ -14,10 +14,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- *  ViewModel для FileChooserFragment.
- *  Отвечает за обработку данных для активности, освобождая её от этой обязанности.
- *  Таким образом, активность отвечает только за прорисовку элементов на экране и реакцию на действия пользователя.
- *  Активность получает данные от этого класса.
+ *  ViewModel for FileChooserFragment.
+ *  Works with directories.
  */
 
 class FileChooserViewModel(application: Application) : AndroidViewModel(application) {
@@ -137,7 +135,11 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         _currentDirs.value = currentTree?.childrenList()!!
     }
 
-    fun loadFiles(tree: FileChooserFragment.FileTreeComponent? = null): ArrayList<String> {
+    /**
+     * Load selected tracks from tree
+     * @param tree Tree which tracks should be loaded
+     */
+    private fun loadFiles(tree: FileChooserFragment.FileTreeComponent? = null): ArrayList<String> {
         var tmpTree = tree
         if (tree == null) {
             pathsToUpload.clear()
@@ -161,6 +163,10 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         return pathsToUpload
     }
 
+    /**
+     * Load all files from tree. This function is used to load selected directories.
+     * @param tree Tree which files should be loaded
+     */
     private fun loadAllFiles(tree: FileChooserFragment.FileTreeComponent?) {
         for (child in tree?.childrenList()!!) {
             if (child.isDirectory)
@@ -174,5 +180,4 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         val repository: Repository = MusicRepository.getInstance()
         repository.addTracks(getApplication(), loadFiles(), playlistId)
     }
-
 }

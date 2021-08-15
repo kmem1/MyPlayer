@@ -9,6 +9,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
 import com.kmem.myplayer.ui.Screen
 
+/**
+ * @param navItems Screens to be shown in RecyclerView
+ */
 class NavListAdapter(private val navItems: ArrayList<Screen>) : RecyclerView.Adapter<NavListAdapter.ViewHolder>() {
 
     var listener: Listener? = null

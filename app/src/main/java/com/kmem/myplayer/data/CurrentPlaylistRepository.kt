@@ -1,20 +1,25 @@
 package com.kmem.myplayer.data
 
 import android.net.Uri
+import android.util.Log
 import com.kmem.myplayer.MyApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.random.Random
 
+/**
+ * Repository that contains data for current playlist
+ */
 class CurrentPlaylistRepository {
 
     private var data: ArrayList<Track> = ArrayList()
     private var shuffleData: ArrayList<Track> = ArrayList() // additional copy for shuffle mode
     private var shuffleStack: ArrayList<Track> = ArrayList() // stack trace for shuffle mode
-    private var stackIndex = 0
+    private var stackIndex = -1
     private var maxIndex = 0
-    private var playlistId = MyApplication.getCurrentPlaylistIdFromPreferences()
+    var playlistId = MyApplication.getCurrentPlaylistIdFromPreferences()
     private var isInitialized = false
     var currentUri: Uri? = null
     var currentItemIndex = 0
@@ -34,7 +39,7 @@ class CurrentPlaylistRepository {
                 MainScope().launch {
                     removeStackPositionsFromDatabase()
                     currTrack.positionInStack = stackIndex
-                    updateTrackInDatabase(currTrack)
+                    updateStackPositionInDatabase(currTrack)
                 }
             }
         }
@@ -55,15 +60,18 @@ class CurrentPlaylistRepository {
                         AppDatabase.getInstance(MyApplication.context())
                             .trackDao().getShuffleStackForPlaylist(playlistId)
                     )
-                    stackIndex = shuffleStack.lastIndex
-                    shuffleData.removeAll(shuffleStack)
-                    val currTrack = shuffleStack[stackIndex]
-                    currentUri = currTrack.uri
-                    currentItemIndex = data.indexOfFirst { it.uri == currentUri }
+                    if (shuffleStack.isNotEmpty()) {
+                        stackIndex = shuffleStack.lastIndex
+                        shuffleData.removeAll(shuffleStack)
+                        val currTrack = shuffleStack[stackIndex]
+                        currentUri = currTrack.uri
+                        currentItemIndex = data.indexOfFirst { it.uri == currentUri }
+                    }
                 } else {
                     val savedState = AppDatabase.getInstance(MyApplication.context())
                         .playlistDao().getState(playlistId)
                     currentItemIndex = data.indexOfFirst { it.uri == savedState.uri }
+                    if (currentItemIndex == -1) currentItemIndex = 0
                 }
             }
 
@@ -74,12 +82,15 @@ class CurrentPlaylistRepository {
         }
     }
 
+    /**
+     * Update order of tracks
+     */
     suspend fun updatePositions() {
         withContext(Dispatchers.IO) {
             data.clear()
             data.addAll(
                 AppDatabase.getInstance(MyApplication.context()).
-                trackDao().getTracksFromPlaylist(playlistId)
+                    trackDao().getTracksFromPlaylist(playlistId)
             )
             currentItemIndex = data.indexOfFirst { it.uri == currentUri }
             if (currentItemIndex == -1)
@@ -87,6 +98,9 @@ class CurrentPlaylistRepository {
         }
     }
 
+    /**
+     * Update current data with new tracks from database
+     */
     suspend fun addNewTracks() {
         withContext(Dispatchers.IO) {
             data.clear()
@@ -106,12 +120,17 @@ class CurrentPlaylistRepository {
         }
     }
 
+    /**
+     * Delete tracks and updates current state of repository
+     * @param tracks Tracks to delete
+     */
     suspend fun deleteTracks(tracks: ArrayList<Track>) {
         data.clear()
 
         withContext(Dispatchers.IO) {
-            data.addAll(AppDatabase.getInstance(MyApplication.context())
-                .trackDao().getTracksFromPlaylist(playlistId)
+            data.addAll(
+                AppDatabase.getInstance(MyApplication.context())
+                    .trackDao().getTracksFromPlaylist(playlistId)
             )
         }
 
@@ -119,8 +138,7 @@ class CurrentPlaylistRepository {
         var indexOfCurrentTrack = data.indexOfFirst { it.uri == currentUri }
         // track that was playing is deleted
         if (indexOfCurrentTrack == -1) {
-            if (currentItemIndex > maxIndex)
-                currentItemIndex = maxIndex
+            if (currentItemIndex > maxIndex) currentItemIndex = maxIndex
         } else {
             currentItemIndex = indexOfCurrentTrack
         }
@@ -130,24 +148,29 @@ class CurrentPlaylistRepository {
             shuffleData.removeAll(tracks)
             shuffleStack.removeAll(tracks)
             if (shuffleStack.isEmpty()) {
-                shuffleStack.add(shuffleData.removeAt(0))
-                stackIndex = 0
+                if (shuffleData.isNotEmpty()) {
+                    shuffleStack.add(shuffleData.removeAt(0))
+                    stackIndex = 0
+                } else {
+                    stackIndex = -1
+                }
             } else {
                 indexOfCurrentTrack = shuffleStack.indexOfFirst { it.uri == currentUri }
                 if (indexOfCurrentTrack == -1) {
-                    if (stackIndex > shuffleStack.lastIndex)
-                        stackIndex = shuffleStack.lastIndex
+                    if (stackIndex > shuffleStack.lastIndex) stackIndex = shuffleStack.lastIndex
                 } else {
                     stackIndex = indexOfCurrentTrack
                 }
             }
             currentItemIndex = data.indexOfFirst { it.uri == shuffleStack[stackIndex].uri }
-            MainScope().launch {
-                updateStackPositionsInDatabase()
-            }
+
+            updateStackPositionsInDatabase()
         }
     }
 
+    /**
+     * @return Next track from repository
+     */
     fun getNext(): Track? {
         if (shuffle) {
             return getNextOnShuffle()
@@ -161,91 +184,143 @@ class CurrentPlaylistRepository {
         return getCurrent()
     }
 
+    /**
+     * @return Next track when shuffle mode is turned on
+     */
     private fun getNextOnShuffle(): Track {
         val track: Track?
         if (stackIndex == shuffleStack.size - 1) {
-            if (shuffleData.isEmpty())
+            var isRefreshed = false
+            if (shuffleData.isEmpty()) {
                 refreshShuffleData()
+                isRefreshed = true
+            }
+
             track = shuffleData.removeAt(0)
             shuffleStack.add(track)
             stackIndex++
-            track.positionInStack = stackIndex
-            updateTrackInDatabase(track)
+
+            MainScope().launch {
+                if (isRefreshed) removeStackPositionsFromDatabase()
+                track.positionInStack = stackIndex
+                updateStackPositionInDatabase(track)
+            }
         } else {
             track = shuffleStack[++stackIndex]
         }
 
         currentUri = track.uri
-        currentItemIndex = data.indexOf(track)
+        currentItemIndex = data.indexOfFirst { it.uri == track.uri }
 
         return track
     }
 
-    private fun updateTrackInDatabase(track: Track) {
-        MainScope().launch {
-            withContext(Dispatchers.IO) {
-                AppDatabase.getInstance(MyApplication.context()).trackDao().updateTrack(track)
-            }
+    /**
+     * @param track Track to update
+     */
+    private suspend fun updateStackPositionInDatabase(track: Track) {
+        withContext(Dispatchers.IO) {
+            AppDatabase.getInstance(MyApplication.context()).trackDao()
+                .updateStackPositionOfTrack(track.uri, track.playlistId, track.positionInStack)
         }
     }
 
+    /**
+     * Update positions of shuffled tracks in database
+     */
     private suspend fun updateStackPositionsInDatabase() {
         withContext(Dispatchers.IO) {
             for ((index, track) in shuffleStack.withIndex()) {
+                Log.d("qwe", "$index $track")
                 track.positionInStack = index
-                updateTrackInDatabase(track)
+                AppDatabase.getInstance(MyApplication.context())
+                    .trackDao().updateStackPositionOfTrack(track.uri, track.playlistId, index)
             }
         }
     }
 
+    /**
+     * Remove positions of shuffled tracks in database
+     */
     private suspend fun removeStackPositionsFromDatabase() {
-        for (track in data) {
-            track.positionInStack = -1
-        }
-
         withContext(Dispatchers.IO) {
-            AppDatabase.getInstance(MyApplication.context()).trackDao().updateAll(data)
+            for (track in data) {
+                track.positionInStack = -1
+                AppDatabase.getInstance(MyApplication.context()).trackDao()
+                    .updateStackPositionOfTrack(track.uri, track.playlistId, track.positionInStack)
+            }
         }
     }
 
     private fun refreshShuffleData() {
+        Log.d("qwe", "$shuffleStack")
+        val prevLastTrack = shuffleStack.removeLast()
         shuffleData.addAll(shuffleStack)
         shuffleData.shuffle()
+        // previous last track shouldn't be first in new shuffle
+        val position = if (shuffleStack.isNotEmpty()) (1..shuffleData.lastIndex+1).random() else 0
+        shuffleData.add(position, prevLastTrack)
         shuffleStack.clear()
-        shuffleStack.add(shuffleData.removeAt(0))
-        stackIndex = 0
+        stackIndex = -1
     }
 
+    /**
+     * @return previous track from repository
+     */
     fun getPrevious(): Track? {
-        if (shuffle)
-            return getPreviousOnShuffle()
+        if (shuffle) return getPreviousOnShuffle()
 
         if (currentItemIndex == 0)
             currentItemIndex = maxIndex
         else
             currentItemIndex--
+
         return getCurrent()
     }
 
+    /**
+     * @return previous track when shuffle mode is turned on
+     */
     private fun getPreviousOnShuffle(): Track {
         if (stackIndex != 0) stackIndex--
 
         val track = shuffleStack[stackIndex]
 
         currentUri = track.uri
-        currentItemIndex = data.indexOf(track)
+        currentItemIndex = data.indexOfFirst { it.uri == track.uri }
 
         return track
     }
 
+    /**
+     * @return Current track from repository
+     */
     fun getCurrent(): Track? {
-        if (maxIndex == -1 || currentItemIndex < 0) return null
+        if (maxIndex == -1 || currentItemIndex < 0 || data.isEmpty()) return null
         currentUri = data[currentItemIndex].uri
+        val currentTrack = data[currentItemIndex]
 
-        return data[currentItemIndex]
+        if (shuffle && shuffleStack.isEmpty()) {
+            shuffleStack.add(currentTrack)
+            stackIndex = 0
+            currentTrack.positionInStack = 0
+            MainScope().launch {
+                withContext(Dispatchers.IO) {
+                    updateStackPositionInDatabase(currentTrack)
+                }
+            }
+        }
+
+        return currentTrack
     }
 
-    fun updateCurrentPlaylist(id: Int, pos: Int) {
+    /**
+     * Set data from playlist specified by id
+     * Update currentTrack
+     * @param id Id of playlist to set
+     * @param pos Position of new current track
+     */
+    fun setPlaylist(id: Int, pos: Int) {
         MainScope().launch {
             val track: Track
             if (id != playlistId) {
@@ -278,13 +353,16 @@ class CurrentPlaylistRepository {
                 track = data[pos]
                 if (shuffle) {
                     if (track in shuffleStack) {
+                        // push the new track to the top of the stack
                         shuffleStack.remove(track)
-                        shuffleStack.add(track)
+                        shuffleStack.add(0, track)
                     } else {
                         shuffleData.remove(track)
                         shuffleStack.add(track)
                     }
                     stackIndex = shuffleStack.lastIndex
+
+                    updateStackPositionsInDatabase()
                 }
             }
 
@@ -293,6 +371,9 @@ class CurrentPlaylistRepository {
         }
     }
 
+    /**
+     * @return True if playlist is ended
+     */
     fun isEnded(): Boolean {
         return if (shuffle) {
             shuffleData.isEmpty()

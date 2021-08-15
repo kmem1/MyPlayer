@@ -1,12 +1,12 @@
 package com.kmem.myplayer.data
 
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.room.*
 
 /**
- * Класс, который отвечает за запросы к БД.
+ * Data access object for tracks in database
  */
-
 @Dao
 interface TrackDao {
 
@@ -22,6 +22,16 @@ interface TrackDao {
             "ORDER BY position_in_stack"
     )
     fun getShuffleStackForPlaylist(playlistId: Int): List<Track>
+
+    @Query("UPDATE track_in_playlist SET " +
+            "position_in_stack = :newPosition " +
+            "WHERE uri = :uri AND playlist_id = :playlistId")
+    fun updateStackPositionOfTrack(uri: Uri, playlistId: Int, newPosition: Int)
+
+    @Query("UPDATE track_in_playlist SET " +
+            "position = :newPosition " +
+            "WHERE uri = :uri AND playlist_id = :playlistId")
+    fun updatePositionOfTrack(uri: Uri, playlistId: Int, newPosition: Int)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertTrack(track: Track)

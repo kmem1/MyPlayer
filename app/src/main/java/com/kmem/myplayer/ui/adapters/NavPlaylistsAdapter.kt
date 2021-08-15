@@ -9,6 +9,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.Playlist
 
+/**
+ * @param playlists Playlists to be shown in list
+ */
 class NavPlaylistsAdapter(private val playlists: ArrayList<Playlist>) : RecyclerView.Adapter<NavPlaylistsAdapter.ViewHolder>() {
 
     class ViewHolder(val playlistView: LinearLayout) : RecyclerView.ViewHolder(playlistView)

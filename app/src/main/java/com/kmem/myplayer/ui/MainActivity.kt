@@ -2,9 +2,9 @@ package com.kmem.myplayer.ui
 
 import android.app.AlertDialog
 import android.app.Dialog
-import android.content.Context
-import android.content.DialogInterface
+import android.content.*
 import android.os.Bundle
+import android.os.IBinder
 import android.widget.Button
 import android.widget.EditText
 import androidx.annotation.DrawableRes
@@ -20,6 +20,7 @@ import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
 import com.kmem.myplayer.data.MusicRepository
 import com.kmem.myplayer.data.Playlist
+import com.kmem.myplayer.service.PlayerService
 import com.kmem.myplayer.ui.adapters.NavListAdapter
 import com.kmem.myplayer.ui.adapters.NavPlaylistsAdapter
 import kotlinx.coroutines.*
@@ -31,7 +32,7 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
     interface Repository {
         suspend fun addPlaylist(context: Context, playlistName: String)
         suspend fun getPlaylists(context: Context): ArrayList<Playlist>
-        fun deletePlaylist(context: Context, playlist: Playlist)
+        suspend fun deletePlaylist(context: Context, playlist: Playlist)
     }
 
     var lastOpenedPlaylistId = MyApplication.getCurrentPlaylistIdFromPreferences()
@@ -43,6 +44,10 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
     private val navPlaylists: ArrayList<Playlist> = ArrayList()
 
     private val repository: Repository = MusicRepository.getInstance()
+
+    private var serviceConnection: ServiceConnection? = null
+    private var playerService: PlayerService? = null
+    private var playerServiceBinder: PlayerService.PlayerServiceBinder? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +69,23 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
             playlistsList.layoutManager = LinearLayoutManager(this@MainActivity)
             playlistsList.isNestedScrollingEnabled = false
         }
+
+        serviceConnection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                playerServiceBinder = service as PlayerService.PlayerServiceBinder
+                playerService = playerServiceBinder?.getService()
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                playerServiceBinder = null
+            }
+        }
+
+        bindService(
+            Intent(this, PlayerService::class.java),
+            serviceConnection!!,
+            BIND_AUTO_CREATE
+        )
 
         findViewById<Button>(R.id.create_playlist_button).setOnClickListener {
             showCreatePlaylistDialog()
@@ -102,6 +124,9 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
             }
             val navController = findNavController(R.id.nav_host_fragment_content_main)
             val newPlaylistId = playlists.maxByOrNull { it.playlistId }?.playlistId ?: 1
+            if (playlists.size == 1) {
+                MyApplication.setCurrentPlaylistIdInPreferences(newPlaylistId)
+            }
             navController.popBackStack(R.id.nav_player, false)
             val bundle = bundleOf("playlist_id" to newPlaylistId)
             navController.navigate(R.id.nav_playlist, bundle)
@@ -136,10 +161,17 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
             }
         }
 
-        if (MyApplication.getCurrentPlaylistIdFromPreferences() == playlist.playlistId)
-            MyApplication.setCurrentPlaylistIdInPreferences(navPlaylists.last().playlistId)
+        // Current playlist deleted
+        if (MyApplication.getCurrentPlaylistIdFromPreferences() == playlist.playlistId) {
+            if (navPlaylists.isNotEmpty()) {
+                MyApplication.setCurrentPlaylistIdInPreferences(navPlaylists.last().playlistId)
+            }
+            playerService?.onCurrentPlaylistDeleted()
+        }
 
-        repository.deletePlaylist(this@MainActivity, playlist)
+        MainScope().launch {
+            repository.deletePlaylist(this@MainActivity, playlist)
+        }
     }
 
     override fun onDeletePlaylistConfirmationNegativeClick(dialog: DialogFragment) { }

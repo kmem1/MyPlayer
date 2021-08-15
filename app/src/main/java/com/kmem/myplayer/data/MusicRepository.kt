@@ -2,6 +2,7 @@ package com.kmem.myplayer.data
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.kmem.myplayer.MyApplication
@@ -28,7 +29,7 @@ class MusicRepository : PlayerService.Repository,
         }
     }
 
-    private val currentPlaylistRepository: CurrentPlaylistRepository = CurrentPlaylistRepository()
+    private var currentPlaylistRepository: CurrentPlaylistRepository = CurrentPlaylistRepository()
 
     override val isInitialized = MutableLiveData<Boolean>(false)
 
@@ -50,8 +51,8 @@ class MusicRepository : PlayerService.Repository,
         return currentPlaylistRepository.getPrevious()
     }
 
-    override fun updateCurrentPlaylist(playlistId: Int, position: Int) {
-        currentPlaylistRepository.updateCurrentPlaylist(playlistId, position)
+    override fun setPlaylist(playlistId: Int, position: Int) {
+        currentPlaylistRepository.setPlaylist(playlistId, position)
     }
 
     override fun isEnded(): Boolean {
@@ -79,38 +80,49 @@ class MusicRepository : PlayerService.Repository,
         return playlists
     }
 
-    override fun deletePlaylist(context: Context, playlist: Playlist) {
-        MainScope().launch {
-            withContext(Dispatchers.IO) {
-                AppDatabase.getInstance(context).playlistDao().deletePlaylist(playlist)
-            }
+    override suspend fun deletePlaylist(context: Context, playlist: Playlist) {
+        withContext(Dispatchers.IO) {
+            AppDatabase.getInstance(context).playlistDao().deletePlaylist(playlist)
+        }
+
+        val currentPlaylistId = MyApplication.getCurrentPlaylistIdFromPreferences()
+        if (currentPlaylistId != currentPlaylistRepository.playlistId) {
+            // create new repository with updated playlist
+            currentPlaylistRepository = CurrentPlaylistRepository()
         }
     }
 
     override suspend fun deleteTracks(context: Context, tracks: ArrayList<Track>, playlistId: Int) {
+        val updatedTracks = ArrayList<Track>()
+
         withContext(Dispatchers.IO) {
             AppDatabase.getInstance(context).trackDao().deleteAll(tracks)
 
             // update positions of tracks after delete
-            val tracksInPlaylist = AppDatabase.getInstance(context)
-                .trackDao().getTracksFromPlaylist(playlistId)
-            val size = tracksInPlaylist.size
-            for (i in 0 until size) {
-                tracksInPlaylist[i].position = i
+            updatedTracks.addAll(AppDatabase.getInstance(context)
+                .trackDao().getTracksFromPlaylist(playlistId))
+            for (i in updatedTracks.indices) {
+                val t = updatedTracks[i]
+                AppDatabase.getInstance(context).trackDao().updatePositionOfTrack(
+                    t.uri, t.playlistId, i
+                )
             }
 
-            AppDatabase.getInstance(context).trackDao().updateAll(tracksInPlaylist)
+            val playlistIdOfTracks = tracks[0].playlistId
+            if (playlistIdOfTracks == MyApplication.getCurrentPlaylistIdFromPreferences())
+                currentPlaylistRepository.deleteTracks(tracks)
         }
-
-        val playlistIdOfTracks = tracks[0].playlistId
-        if (playlistIdOfTracks == MyApplication.getCurrentPlaylistIdFromPreferences())
-            currentPlaylistRepository.deleteTracks(tracks)
     }
 
     override fun updatePositions(context: Context, tracks: ArrayList<Track>) {
         MainScope().launch {
+            val tracksCopy = tracks.toArray()
             withContext(Dispatchers.IO) {
-                AppDatabase.getInstance(context).trackDao().updateAll(tracks)
+                for (track in tracksCopy) {
+                    track as Track // type cast
+                    AppDatabase.getInstance(context).trackDao()
+                        .updatePositionOfTrack(track.uri, track.playlistId, track.position)
+                }
             }
 
             val playlistIdOfTracks = tracks[0].playlistId
@@ -129,12 +141,17 @@ class MusicRepository : PlayerService.Repository,
 
                 val sizeOffset = currentTracks.size
                 for ((position, path) in paths.withIndex()) {
-                    val track = createTrackFromPath(
-                        context,
-                        path,
-                        position + sizeOffset, // offset to positions of new tracks
-                        playlistId
-                    )
+                    val track: Track
+                    try {
+                        track = createTrackFromPath(
+                            context,
+                            path,
+                            position + sizeOffset, // offset to positions of new tracks
+                            playlistId
+                        )
+                    } catch (e: Exception) {
+                        continue
+                    }
                     newTracks.add(track)
                 }
 

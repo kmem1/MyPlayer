@@ -12,13 +12,7 @@ import com.kmem.myplayer.R
 import com.kmem.myplayer.ui.fragments.FileChooserFragment
 
 /**
- *  Адаптер для элемента RecyclerView в FileChooserFragment.
- *  Определяет поведение RecyclerView.
- *  Отвечает за заполнение элемента списка информацией.
- *  Отвечает за взаимодействие элементов списка с пользователем.
- *
- *  Аргументы:
- *      ArrayList с деревьями файлов.
+ * @param treeList Tree of files to be shown
  */
 
 class FileChooserAdapter(private val treeList: ArrayList<FileChooserFragment.FileTreeComponent>)

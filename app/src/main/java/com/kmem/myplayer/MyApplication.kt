@@ -14,6 +14,7 @@ class MyApplication : Application() {
         private const val APP_PREFERENCES_DURATION_POSITION = "preferences_duration_position"
         private const val APP_PREFERENCES_TRACK_POSITION = "preferences_track_position"
         private const val APP_PREFERENCES_PLAYBACK_STATE = "preferences_playback_state"
+        private const val APP_PREFERENCES_WAS_PERMISSION_GRANTED = "preferences_permission"
 
         lateinit var currentInstance: MyApplication
 
@@ -30,7 +31,7 @@ class MyApplication : Application() {
             return sharedPref?.getInt(APP_PREFERENCES_PLAYBACK_STATE, 1) ?: 1
         }
 
-        fun setPlaybackStateFromPreferences(state: Int) {
+        fun setPlaybackStateInPreferences(state: Int) {
             val sharedPref = currentInstance.getSharedPreferences(
                 APP_PREFERENCES,
                 Context.MODE_PRIVATE
@@ -101,6 +102,28 @@ class MyApplication : Application() {
 
             with(sharedPref.edit()) {
                 putBoolean(APP_PREFERENCES_REPEAT, newValue)
+                apply()
+            }
+        }
+
+        fun wasPermissionAlreadyGranted(): Boolean {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            return sharedPref?.getBoolean(
+                APP_PREFERENCES_WAS_PERMISSION_GRANTED, false) ?: false
+        }
+
+        fun setPermissionGrantedInPreferences(newValue: Boolean) {
+            val sharedPref = currentInstance.getSharedPreferences(
+                APP_PREFERENCES,
+                Context.MODE_PRIVATE
+            )
+
+            with(sharedPref.edit()) {
+                putBoolean(APP_PREFERENCES_WAS_PERMISSION_GRANTED, newValue)
                 apply()
             }
         }

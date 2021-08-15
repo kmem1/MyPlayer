@@ -2,6 +2,7 @@ package com.kmem.myplayer.ui.adapters
 
 import android.annotation.SuppressLint
 import android.net.Uri
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,14 +17,8 @@ import java.util.*
 import kotlin.collections.ArrayList
 
 /**
- *  Адаптер для элемента RecyclerView в PlaylistFragment.
- *  Определяет поведение RecyclerView.
- *  Отвечает за заполнение элемента списка информацией.
- *  Отвечает за взаимодействие элементов списка с пользователем.
- *  Аргументы:
- *      ArrayList с песнями.
+ * @param audios Audios to be shown in list
  */
-
 class PlaylistAdapter(private val audios: ArrayList<Track>) :
     RecyclerView.Adapter<PlaylistAdapter.ViewHolder>(), ItemTouchHelperAdapter {
 
@@ -100,6 +95,7 @@ class PlaylistAdapter(private val audios: ArrayList<Track>) :
                 Collections.swap(audios, i, i + 1)
             }
         }
+        Log.d("adapter", "MoveItem")
 
         notifyItemMoved(fromPosition, toPosition)
         return true

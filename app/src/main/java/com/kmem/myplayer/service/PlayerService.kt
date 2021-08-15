@@ -41,9 +41,12 @@ import com.kmem.myplayer.data.PlaylistState
 import com.kmem.myplayer.data.Track
 import com.kmem.myplayer.ui.MainActivity
 import kotlinx.coroutines.*
-import java.lang.IndexOutOfBoundsException
+import java.io.File
 import java.util.*
 
+/**
+ * Service for playing music
+ */
 class PlayerService : Service() {
 
     interface Repository {
@@ -52,7 +55,7 @@ class PlayerService : Service() {
         fun getCurrent(): Track?
         fun getNext(): Track?
         fun getPrevious(): Track?
-        fun updateCurrentPlaylist(playlistId: Int, position: Int)
+        fun setPlaylist(playlistId: Int, position: Int)
         fun isEnded(): Boolean
         fun savePlaylistState(playlistId: Int, uri: Uri, position: Int)
         suspend fun getPlaylistState(context: Context, playlistId: Int): PlaylistState
@@ -80,7 +83,6 @@ class PlayerService : Service() {
     )
 
     private val context = this
-
     private var mediaSession: MediaSessionCompat? = null
 
     private var audioManager: AudioManager? = null
@@ -97,10 +99,16 @@ class PlayerService : Service() {
     private var inactivityCheckJob: Job? = null
     private var savePlaylistStateJob: Job? = null
 
-    val currentMetadata: MutableLiveData<MediaMetadataCompat> =
-        MutableLiveData<MediaMetadataCompat>()
-    val currentUri: MutableLiveData<Uri> = MutableLiveData<Uri>()
-    var repeatMode: Boolean = false
+    private val _currentMetadata = MutableLiveData<MediaMetadataCompat?>()
+    private val _currentUri = MutableLiveData<Uri>()
+
+    val currentMetadata: LiveData<MediaMetadataCompat?> = _currentMetadata
+    val currentUri: LiveData<Uri> = _currentUri
+    var repeatMode: Boolean = MyApplication.getRepeatModeFromPreferences()
+        set(value) {
+            MyApplication.setRepeatModeInPreferences(value)
+            field = value
+        }
 
     @SuppressLint("WrongConstant")
     override fun onCreate() {
@@ -186,23 +194,18 @@ class PlayerService : Service() {
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     fun onRepositoryInitialized() {
         MainScope().launch {
-            val track = musicRepository.getCurrent()
+            val track = musicRepository.getCurrent() ?: return@launch
+            if (!checkFileExistence(track.uri, showMessage = false)) return@launch
 
-            if (track != null && !isRepositoryInitialized) {
-                Log.d("qwe", "service init")
+            if (!isRepositoryInitialized) {
                 val state = musicRepository.getPlaylistState(
                     this@PlayerService, MyApplication.getCurrentPlaylistIdFromPreferences()
                 )
                 prepareToPlay(track)
+                _currentUri.value = Uri.EMPTY
 
                 exoPlayer?.seekTo(state.position.toLong())
-                mediaSession?.setPlaybackState(
-                    stateBuilder.setState(
-                        MyApplication.getPlaybackStateFromPreferences(),
-                        exoPlayer?.contentPosition!!,
-                        1F
-                    ).build()
-                )
+                setPlaybackState(MyApplication.getPlaybackStateFromPreferences())
                 isRepositoryInitialized = true
             }
         }
@@ -214,6 +217,10 @@ class PlayerService : Service() {
         mediaSessionCallback.onRemoveQueueItem(null)
     }
 
+    fun onCurrentPlaylistDeleted() {
+        mediaSessionCallback.onStop()
+    }
+
     fun setShuffle(value: Boolean) {
         musicRepository.shuffle = value
     }
@@ -222,38 +229,18 @@ class PlayerService : Service() {
         return musicRepository.shuffle
     }
 
-    /*
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    suspend fun deleteTracks(tracks: ArrayList<Track>) {
-        musicRepository?.deleteTracks(tracks)
-        // refresh current track
-        if (musicRepository?.getCurrent()?.uri != currentUri.value
-            && mediaSession?.isActive == true
-        ) {
-            val state = mediaSessionCallback.currentState
-            mediaSessionCallback.onPause()
-            mediaSessionCallback.onPlay() // play for update track
-            if (state != PlaybackStateCompat.STATE_PLAYING)
-                mediaSessionCallback.onPause()
-        }
-    }
+    /**
+     * Determines actions for control player
      */
-
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
         var currentState = MyApplication.getPlaybackStateFromPreferences()
-        set(value) {
-            MyApplication.setPlaybackStateFromPreferences(value)
-            field = value
-        }
+            set(value) {
+                MyApplication.setPlaybackStateInPreferences(value)
+                field = value
+            }
 
         init {
-            mediaSession?.setPlaybackState(
-                stateBuilder.setState(
-                    currentState,
-                    PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN,
-                    1F
-                ).build()
-            )
+            setPlaybackState(currentState, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN)
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
@@ -263,16 +250,10 @@ class PlayerService : Service() {
 
                 val track = musicRepository.getCurrent()
 
-                if (track == null) {
-                    Toast.makeText(
-                        applicationContext,
-                        "Empty Playlist",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    onStop()
-                    return
-                }
+                if (isTrackNull(track)) return
+                track as Track // remove nullability
 
+                if (!checkFileExistence(track.uri)) return
                 prepareToPlay(track)
 
                 if (!audioFocusRequested) {
@@ -301,15 +282,8 @@ class PlayerService : Service() {
                 runPlaylistStateUpdater()
             }
 
-            mediaSession?.setPlaybackState(
-                stateBuilder.setState(
-                    PlaybackStateCompat.STATE_PLAYING,
-                    exoPlayer?.contentPosition!!,
-                    1F
-                ).build()
-            )
+            setPlaybackState(PlaybackStateCompat.STATE_PLAYING)
             currentState = PlaybackStateCompat.STATE_PLAYING
-
             refreshNotificationAndForegroundStatus(currentState)
         }
 
@@ -322,13 +296,7 @@ class PlayerService : Service() {
             if (audioFocusRequested)
                 audioFocusRequested = false
 
-            mediaSession?.setPlaybackState(
-                stateBuilder.setState(
-                    PlaybackStateCompat.STATE_PAUSED,
-                    exoPlayer?.contentPosition!!,
-                    1F
-                ).build()
-            )
+            setPlaybackState(PlaybackStateCompat.STATE_PAUSED)
             currentState = PlaybackStateCompat.STATE_PAUSED
 
             saveCurrentPlaylistState(musicRepository.getCurrent())
@@ -353,72 +321,54 @@ class PlayerService : Service() {
             }
 
             mediaSession?.isActive = false
-            mediaSession?.setPlaybackState(
-                stateBuilder.setState(
-                    PlaybackStateCompat.STATE_STOPPED,
-                    exoPlayer?.contentPosition!!,
-                    1F
-                ).build()
-            )
+            setPlaybackState(PlaybackStateCompat.STATE_STOPPED)
             currentState = PlaybackStateCompat.STATE_STOPPED
-
-            saveCurrentPlaylistState(musicRepository.getCurrent())
             refreshNotificationAndForegroundStatus(currentState)
             savePlaylistStateJob?.cancel()
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onSkipToNext() {
-            val track = musicRepository.getNext()
+            var track = musicRepository.getNext()
+            if (isTrackNull(track)) return
 
-            if (track == null) {
-                Toast.makeText(
-                    applicationContext,
-                    "Empty Playlist",
-                    Toast.LENGTH_SHORT
-                ).show()
-                onStop()
-                return
+            while (!checkFileExistence(track!!.uri, false) && track.uri != currentUri.value) {
+                track = musicRepository.getNext()
             }
 
-            prepareToPlay(track)
+            // all tracks are deleted from memory
+            if (!checkFileExistence(track.uri, showMessage = false)) onStop()
 
-            mediaSession?.setPlaybackState(
-                stateBuilder.setState(
-                    currentState,
-                    exoPlayer?.contentPosition!!,
-                    1F
-                ).build()
-            )
+            if (track.uri == currentUri.value) {
+                exoPlayer?.seekTo(0)
+            } else {
+                prepareToPlay(track)
+            }
 
+            setPlaybackState(currentState)
             saveCurrentPlaylistState(track)
             refreshNotificationAndForegroundStatus(currentState)
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onSkipToPrevious() {
-            val track = musicRepository.getPrevious()
+            var track = musicRepository.getPrevious()
+            if (isTrackNull(track)) return
 
-            if (track == null) {
-                Toast.makeText(
-                    applicationContext,
-                    "Empty Playlist",
-                    Toast.LENGTH_SHORT
-                ).show()
-                onStop()
-                return
+            while (!checkFileExistence(track!!.uri, false) && track!!.uri != currentUri.value) {
+                track = musicRepository.getPrevious()
             }
 
-            prepareToPlay(track)
+            // all tracks are deleted from memory
+            if (!checkFileExistence(track!!.uri, showMessage = false)) onStop()
 
-            mediaSession?.setPlaybackState(
-                stateBuilder.setState(
-                    currentState,
-                    exoPlayer?.contentPosition!!,
-                    1F
-                ).build()
-            )
+            if (track!!.uri == currentUri.value) {
+                exoPlayer?.seekTo(0)
+            } else {
+                prepareToPlay(track!!)
+            }
 
+            setPlaybackState(currentState)
             saveCurrentPlaylistState(track)
             refreshNotificationAndForegroundStatus(currentState)
         }
@@ -426,14 +376,7 @@ class PlayerService : Service() {
         override fun onSeekTo(pos: Long) {
             exoPlayer?.seekTo(pos)
 
-            mediaSession?.setPlaybackState(
-                stateBuilder.setState(
-                    currentState,
-                    exoPlayer?.contentPosition!!,
-                    1F
-                ).build()
-            )
-
+            setPlaybackState(currentState)
             saveCurrentPlaylistState(musicRepository.getCurrent())
             refreshNotificationAndForegroundStatus(currentState)
         }
@@ -443,21 +386,13 @@ class PlayerService : Service() {
             if (musicRepository.getCurrent()?.uri != currentUri.value) {
                 val track = musicRepository.getCurrent()
 
-                if (track == null) {
+                if (track == null || !checkFileExistence(track.uri)) {
                     onStop()
                     return
                 }
 
                 prepareToPlay(track)
-
-                mediaSession?.setPlaybackState(
-                    stateBuilder.setState(
-                        currentState,
-                        exoPlayer?.contentPosition!!,
-                        1F
-                    ).build()
-                )
-
+                setPlaybackState(currentState)
                 saveCurrentPlaylistState(musicRepository.getCurrent())
             }
         }
@@ -465,14 +400,17 @@ class PlayerService : Service() {
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onCustomAction(action: String?, extras: Bundle?) {
             if (action == ACTION_PLAY_SELECTED_TRACK && extras != null) {
-                startService(Intent(baseContext, PlayerService::class.java))
-
                 val track = extras.getParcelable<Track>(EXTRA_TRACK)!!
                 val position = extras.getInt(EXTRA_POSITION)
 
+                if (!checkFileExistence(track.uri)) return
+
+                startService(Intent(baseContext, PlayerService::class.java))
+
                 if (track.playlistId != MyApplication.getCurrentPlaylistIdFromPreferences()) {
-                    if (musicRepository.getCurrent() != null)
+                    if (musicRepository.getCurrent() != null) {
                         saveCurrentPlaylistState(musicRepository.getCurrent())
+                    }
                     musicRepository.savePlaylistState(track.playlistId, track.uri, position)
                     prepareToPlay(track)
                 } else {
@@ -480,7 +418,7 @@ class PlayerService : Service() {
                     saveCurrentPlaylistState(track)
                 }
 
-                musicRepository.updateCurrentPlaylist(track.playlistId, track.position)
+                musicRepository.setPlaylist(track.playlistId, track.position)
 
                 if (position != 0) {
                     exoPlayer?.seekTo(position.toLong())
@@ -509,13 +447,7 @@ class PlayerService : Service() {
                 )
                 exoPlayer!!.playWhenReady = true
 
-                mediaSession?.setPlaybackState(
-                    stateBuilder.setState(
-                        PlaybackStateCompat.STATE_PLAYING,
-                        exoPlayer?.contentPosition!!,
-                        1F
-                    ).build()
-                )
+                setPlaybackState(PlaybackStateCompat.STATE_PLAYING)
                 currentState = PlaybackStateCompat.STATE_PLAYING
 
                 refreshNotificationAndForegroundStatus(currentState)
@@ -523,6 +455,22 @@ class PlayerService : Service() {
             }
         }
 
+        private fun isTrackNull(track: Track?): Boolean {
+            if (track == null) {
+                Toast.makeText(
+                    applicationContext,
+                    "Empty Playlist",
+                    Toast.LENGTH_SHORT
+                ).show()
+                onStop()
+                return true
+            }
+            return false
+        }
+
+        /**
+         * @param track Track which state should be saved
+         */
         private fun saveCurrentPlaylistState(track: Track?) {
             if (track != null) {
                 musicRepository.savePlaylistState(
@@ -537,6 +485,9 @@ class PlayerService : Service() {
             }
         }
 
+        /**
+         *  Runs updater that updates current state of playlist every UPDATE_STATE_INTERVAL seconds
+         */
         private fun runPlaylistStateUpdater() {
             if (savePlaylistStateJob == null || savePlaylistStateJob!!.isCancelled) {
                 savePlaylistStateJob = MainScope().launch {
@@ -554,13 +505,19 @@ class PlayerService : Service() {
         }
     }
 
+    private fun setPlaybackState(state: Int, position: Long = exoPlayer?.contentPosition!!) {
+        mediaSession?.setPlaybackState(
+            stateBuilder.setState(state, position, 1F).build()
+        )
+    }
+
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun prepareToPlay(track: Track) {
         if (track.uri != currentUri.value || repeatMode) {
             if (track.uri != currentUri.value) {
                 updateMetadataFromTrack(track)
             }
-            currentUri.value = track.uri
+            _currentUri.value = track.uri
             val mediaItem = MediaItem.fromUri(track.uri)
             val mediaSource =
                 ProgressiveMediaSource.Factory(dataSourceFactory!!, extractorsFactory!!)
@@ -582,12 +539,13 @@ class PlayerService : Service() {
             BitmapFactory.decodeResource(resources, R.drawable.without_album)
         )
         var metadata = metadataBuilder.build()
-        currentMetadata.value = metadata
+        _currentMetadata.value = metadata
         mediaSession?.setMetadata(metadata)
 
         MainScope().launch {
             withContext(Dispatchers.IO) {
-                val mmr = MediaMetadataRetriever().apply { setDataSource(context, track.uri) }
+                val mmr =
+                    MediaMetadataRetriever().apply { setDataSource(context, track.uri) }
                 val art = mmr.embeddedPicture
                 if (art != null) {
                     metadataBuilder.putBitmap(
@@ -599,9 +557,18 @@ class PlayerService : Service() {
             }
 
             metadata = metadataBuilder.build()
-            currentMetadata.value = metadata
+            _currentMetadata.value = metadata
             mediaSession?.setMetadata(metadata)
         }
+    }
+
+    private fun checkFileExistence(uri: Uri, showMessage: Boolean = true): Boolean {
+        val file = File(uri.path!!)
+        if (showMessage && (!file.exists() || !file.canRead())) {
+            Toast.makeText(context, "Error: File not found", Toast.LENGTH_SHORT).show()
+        }
+
+        return file.exists() && file.canRead()
     }
 
     private var audioFocusChangeListener: AudioManager.OnAudioFocusChangeListener =
@@ -699,10 +666,17 @@ class PlayerService : Service() {
                 }
             }
             else -> {
+                Log.d("Notification", "Closing notification")
+                stopForeground(true)
+                //NotificationManagerCompat.from(baseContext).cancel(NOTIFICATION_ID)
             }
         }
     }
 
+    /**
+     * @param playbackState State of player
+     * @return Notification with current player state
+     */
     private fun getNotification(playbackState: Int): Notification {
         Log.d("state", playbackState.toString())
         val builder = MediaStyleHelper.from(baseContext, mediaSession!!)

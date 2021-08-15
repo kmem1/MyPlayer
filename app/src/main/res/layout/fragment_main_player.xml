@@ -16,12 +16,12 @@
             android:id="@+id/to_playlist_button"
             android:layout_width="?attr/actionBarSize"
             android:layout_height="?attr/actionBarSize"
-            android:src="@drawable/outline_playlist_play_24"
             android:layout_gravity="end"
             android:background="@null"
             android:scaleType="fitXY"
             android:scaleX="0.6"
-            android:scaleY="0.6"/>
+            android:scaleY="0.6"
+            android:src="@drawable/outline_playlist_play_24" />
 
     </androidx.appcompat.widget.Toolbar>
 

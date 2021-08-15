@@ -1,5 +1,6 @@
 package com.kmem.myplayer.ui.helpers
 
+import android.util.Log
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 
@@ -47,6 +48,7 @@ class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapt
     }
 
     private fun onItemDrop(from: Int, to: Int) {
+        Log.d("adapter", "DropItem")
         adapter.updatePositions(from, to)
     }
 
@@ -62,5 +64,4 @@ class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapt
         dragFrom = -1
         dragTo = -1
     }
-
 }

@@ -8,8 +8,8 @@ import androidx.room.TypeConverters
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * Класс, который содержит базу данных.
- * */
+ * Database class for Room framework
+ */
 @Database(entities = [Track::class, Playlist::class], version = 1)
 @TypeConverters(UriConverters::class)
 abstract class AppDatabase : RoomDatabase() {

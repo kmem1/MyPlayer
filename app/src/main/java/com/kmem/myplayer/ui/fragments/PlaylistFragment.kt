@@ -62,7 +62,8 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     companion object {
         const val PERMISSION_STRING = Manifest.permission.READ_EXTERNAL_STORAGE
-        const val PERMISSION_CODE = 596
+        const val PERMISSION_CODE_FOR_FILECHOOSER = 596
+        const val PERMISSION_CODE_FOR_PLAYING_TRACKS = 597
     }
 
     private var audios: ArrayList<Track> = ArrayList()
@@ -156,6 +157,13 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         return layout
     }
 
+    override fun onStart() {
+        super.onStart()
+
+        // check permission on start fragment
+        if (MyApplication.wasPermissionAlreadyGranted() && !checkPermission())
+            requestPermission(PERMISSION_CODE_FOR_PLAYING_TRACKS)
+    }
 
     override fun onResume() {
         super.onResume()
@@ -218,13 +226,15 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             findNavController().navigate(R.id.action_playlist_to_filechooser, bundle)
         }
         else {
-            requestPermission()
+            requestPermission(PERMISSION_CODE_FOR_FILECHOOSER)
         }
     }
 
     private val uriObserver = Observer<Uri> { newUri ->
-        currentUri = newUri
-        list.adapter?.notifyDataSetChanged()
+        if (MyApplication.getCurrentPlaylistIdFromPreferences() == playlistId) {
+            currentUri = newUri
+            list.adapter?.notifyDataSetChanged()
+        }
     }
 
     private fun setupToolbar() {
@@ -254,12 +264,14 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
     private fun getPlaylistState() {
         MainScope().launch {
-            val state: PlaylistState
+            val state: PlaylistState?
             withContext(Dispatchers.IO) {
                 state = repository.getPlaylistState(requireContext(), playlistId)
             }
-            playlistState = state
-            currentUri = state.uri
+            if (state != null) {
+                playlistState = state
+                currentUri = state.uri
+            }
         }
     }
 
@@ -277,7 +289,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
 
         withContext(Dispatchers.IO) {
             liveData = repository.getTracksFromPlaylist(requireContext(), playlistId)
-            delay(150)
         }
 
         liveData?.observe(viewLifecycleOwner) {
@@ -295,13 +306,13 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun requestPermission() {
+    private fun requestPermission(permissionCode: Int) {
         if (ContextCompat.checkSelfPermission(requireContext(), PERMISSION_STRING)
             != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(
                 arrayOf(PERMISSION_STRING),
-                PERMISSION_CODE
+                permissionCode
             )
         }
     }
@@ -332,10 +343,11 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-        if (requestCode == PERMISSION_CODE) {
+        if (requestCode == PERMISSION_CODE_FOR_FILECHOOSER) {
             if (grantResults.isNotEmpty() &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED
             ) {
+                MyApplication.setPermissionGrantedInPreferences(true)
                 val bundle = Bundle()
                 bundle.putInt("playlist_id", playlistId)
                 findNavController().navigate(R.id.action_playlist_to_filechooser, bundle)
@@ -347,7 +359,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
                 ).show()
             }
         }
-
     }
 
     override fun onAudioClick(position: Int) {
@@ -361,6 +372,8 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             bundle.putInt(PlayerService.EXTRA_POSITION, 0)
         }
 
+        currentUri = audios[position].uri
+        list.adapter?.notifyDataSetChanged()
 
         mediaController?.transportControls?.sendCustomAction(
             PlayerService.ACTION_PLAY_SELECTED_TRACK,

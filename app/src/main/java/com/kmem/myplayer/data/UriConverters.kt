@@ -4,9 +4,8 @@ import android.net.Uri
 import androidx.room.TypeConverter
 
 /**
- * Конвертер данных: URI <--> String.
+ * Type converter: URI <--> String.
  */
-
 class UriConverters {
 
     @TypeConverter

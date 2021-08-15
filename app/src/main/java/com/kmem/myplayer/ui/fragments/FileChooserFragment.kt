@@ -30,7 +30,6 @@ import java.io.Serializable
 /**
  *  Fragment that allows to browse mp3 files and add them to playlist.
  */
-
 class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
 
     private val currentDirs: ArrayList<FileTreeComponent> = ArrayList()
@@ -126,15 +125,6 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
         val pathView = layout.findViewById<TextView>(R.id.dir_path)
         pathView.text = t
     }
-
-    /*
-    private fun sendPaths(paths: ArrayList<String>) {
-        intent = Intent()
-        intent.putStringArrayListExtra(PATHS, paths)
-        setResult(RESULT_OK, intent)
-        finish()
-    }
-     */
 
     override fun onListItemClick(position: Int) {
         scope.launch {
