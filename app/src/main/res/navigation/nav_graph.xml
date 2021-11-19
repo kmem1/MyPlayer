@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/nav_player"
-        android:name="com.kmem.myplayer.ui.fragments.MainPlayerFragment"
+        android:name="com.kmem.myplayer.feature_player.presentation.fragments.MainPlayerFragment"
         android:label="fragment_main_player"
         tools:layout="@layout/fragment_main_player" >
         <action
@@ -17,7 +17,7 @@
 
     <fragment
         android:id="@+id/nav_playlist"
-        android:name="com.kmem.myplayer.ui.fragments.PlaylistFragment"
+        android:name="com.kmem.myplayer.feature_playlist.presentation.fragments.PlaylistFragment"
         android:label="fragment_playlist"
         tools:layout="@layout/fragment_playlist" >
         <action
@@ -31,7 +31,7 @@
 
     <fragment
         android:id="@+id/nav_filechooser"
-        android:name="com.kmem.myplayer.ui.fragments.FileChooserFragment"
+        android:name="com.kmem.myplayer.feature_playlist.presentation.fragments.FileChooserFragment"
         android:label="FileChooserFragment" >
         <action
             android:id="@+id/action_filechooser_to_playlist"
@@ -46,7 +46,7 @@
 
     <fragment
         android:id="@+id/nav_effects"
-        android:name="com.kmem.myplayer.ui.fragments.SoundEffectsFragment"
+        android:name="com.kmem.myplayer.feature_sound_effects.presentation.fragments.SoundEffectsFragment"
         android:label="SoundEffectsFragment" />
 
 </navigation>

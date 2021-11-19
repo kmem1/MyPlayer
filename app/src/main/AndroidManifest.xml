@@ -18,7 +18,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyPlayer">
         <service
-            android:name=".service.PlayerService"
+            android:name=".feature_player.service.PlayerService"
             android:exported="true"
             tools:ignore="ExportedService"
             android:stopWithTask="false">
@@ -27,17 +27,19 @@
             </intent-filter>
         </service>
 
-        <receiver android:name="androidx.media.session.MediaButtonReceiver">
+        <receiver android:name="androidx.media.session.MediaButtonReceiver"
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
 
         <activity
-            android:name="com.kmem.myplayer.ui.MainActivity"
+            android:name="com.kmem.myplayer.core.presentation.MainActivity"
             android:launchMode="singleTask"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.MyPlayer">
+            android:theme="@style/Theme.MyPlayer"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
