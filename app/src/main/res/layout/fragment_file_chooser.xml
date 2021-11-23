@@ -18,7 +18,7 @@
             android:layout_height="match_parent">
 
             <ImageButton
-                android:id="@+id/prev_path_button"
+                android:id="@+id/prev_path_btn"
                 android:contentDescription="Previous Path"
                 android:layout_width="?attr/actionBarSize"
                 android:layout_height="match_parent"
@@ -28,7 +28,7 @@
                 android:scaleX="0.6"
                 android:scaleY="0.6"
                 android:src="@drawable/baseline_north_24"
-                android:tint="?attr/colorOnPrimary" />
+                app:tint="?attr/colorOnPrimary" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -41,7 +41,7 @@
                 android:paddingEnd="8dp">
 
                 <TextView
-                    android:id="@+id/dir_name"
+                    android:id="@+id/dir_name_tv"
                     style="@style/TextAppearance.AppCompat.Medium"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -52,7 +52,7 @@
                     android:textColor="?attr/colorOnPrimary" />
 
                 <TextView
-                    android:id="@+id/dir_path"
+                    android:id="@+id/dir_path_tv"
                     style="@style/TextAppearance.AppCompat.Small"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -65,7 +65,7 @@
             </LinearLayout>
 
             <ImageButton
-                android:id="@+id/home_button"
+                android:id="@+id/home_btn"
                 android:contentDescription="Home Button"
                 android:layout_width="?attr/actionBarSize"
                 android:layout_height="match_parent"
@@ -76,21 +76,21 @@
                 android:scaleX="0.6"
                 android:scaleY="0.6"
                 android:src="@drawable/baseline_home_24"
-                android:tint="?attr/colorOnPrimary" />
+                app:tint="?attr/colorOnPrimary" />
 
         </LinearLayout>
 
     </androidx.appcompat.widget.Toolbar>
 
     <ProgressBar
-        android:id="@+id/progress_bar"
+        android:id="@+id/loading_pb"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/toolbar"
         android:layout_centerHorizontal="true"/>
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/fileList"
+        android:id="@+id/file_list_rv"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_above="@+id/toolbar_bottom"
@@ -113,7 +113,7 @@
             android:layout_height="match_parent">
 
             <ImageButton
-                android:id="@+id/select_all"
+                android:id="@+id/select_all_btn"
                 android:layout_width="?attr/actionBarSize"
                 android:layout_height="match_parent"
                 android:layout_alignParentStart="true"
@@ -123,10 +123,10 @@
                 android:scaleX="0.6"
                 android:scaleY="0.6"
                 android:src="@drawable/baseline_select_all_24"
-                android:tint="?attr/colorOnPrimary" />
+                app:tint="?attr/colorOnPrimary" />
 
             <ImageButton
-                android:id="@+id/load_files"
+                android:id="@+id/load_files_btn"
                 android:layout_width="?attr/actionBarSize"
                 android:layout_height="match_parent"
                 android:layout_alignParentEnd="true"
@@ -136,7 +136,7 @@
                 android:scaleX="0.6"
                 android:scaleY="0.6"
                 android:src="@drawable/baseline_done_24"
-                android:tint="?attr/colorOnPrimary" />
+                app:tint="?attr/colorOnPrimary" />
 
         </RelativeLayout>
 

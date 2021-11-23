@@ -1,5 +1,6 @@
 package com.kmem.myplayer.feature_playlist.presentation.adapters
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,16 +10,12 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.R
-import com.kmem.myplayer.feature_playlist.presentation.fragments.FileChooserFragment
+import com.kmem.myplayer.feature_playlist.domain.model.filechooser.FileTreeComponent
 
-/**
- * @param treeList Tree of files to be shown
- */
-
-class FileChooserAdapter(private val treeList: ArrayList<FileChooserFragment.FileTreeComponent>)
+class FileChooserAdapter(private var listener: Listener? = null)
     : RecyclerView.Adapter<FileChooserAdapter.ViewHolder>() {
 
-    var listener: Listener? = null
+    private var treeList: List<FileTreeComponent> = emptyList()
 
     interface Listener {
         fun onListItemClick(position: Int)
@@ -31,7 +28,7 @@ class FileChooserAdapter(private val treeList: ArrayList<FileChooserFragment.Fil
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val fileView = LayoutInflater.from(parent.context)
-            .inflate(R.layout.file_list_item, parent, false) as LinearLayout
+                .inflate(R.layout.file_list_item, parent, false) as LinearLayout
         return ViewHolder(fileView)
     }
 
@@ -55,5 +52,11 @@ class FileChooserAdapter(private val treeList: ArrayList<FileChooserFragment.Fil
                 listener?.onCheckboxClick(position, buttonView.isChecked)
             }
         }
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    fun setData(newList: List<FileTreeComponent>) {
+        treeList = newList
+        notifyDataSetChanged()
     }
 }

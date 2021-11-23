@@ -2,15 +2,16 @@ package com.kmem.myplayer.feature_playlist.presentation.viewmodels
 
 import android.app.Application
 import android.content.Context
-
 import androidx.core.content.ContextCompat.getExternalFilesDirs
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import com.kmem.myplayer.core_data.repositories.MusicRepository
-import com.kmem.myplayer.feature_playlist.presentation.fragments.FileChooserFragment
+import com.kmem.myplayer.feature_playlist.domain.model.filechooser.DirectoryNode
+import com.kmem.myplayer.feature_playlist.domain.model.filechooser.FileModel
+import com.kmem.myplayer.feature_playlist.domain.model.filechooser.FileTreeComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -26,18 +27,16 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         fun addTracks(context: Context, paths: ArrayList<String>, playlistId: Int)
     }
 
-    private val _currentPath: MutableLiveData<String> = MutableLiveData()
-    private val _currentDirName: MutableLiveData<String> = MutableLiveData()
-    private val _currentDirs: MutableLiveData<ArrayList<FileChooserFragment.FileTreeComponent>> =
-        MutableLiveData()
+    private val _currentPath: MutableStateFlow<String> = MutableStateFlow("")
+    private val _currentDirName: MutableStateFlow<String> = MutableStateFlow("")
+    private val _currentDirs: MutableStateFlow<List<FileTreeComponent>> =
+            MutableStateFlow(emptyList())
 
-    val currentPath: LiveData<String> = _currentPath
-    val currentDirName: LiveData<String> = _currentDirName
-    val currentDirs: LiveData<ArrayList<FileChooserFragment.FileTreeComponent>> = _currentDirs
-    var wasSelectedOneFile = false
-    var positionSelected = 0
+    val currentPath = _currentPath.asStateFlow()
+    val currentDirName = _currentDirName.asStateFlow()
+    val currentDirs = _currentDirs.asStateFlow()
 
-    private var currentTree: FileChooserFragment.FileTreeComponent? = null
+    private var currentTree: FileTreeComponent? = null
     private val pathsToUpload: ArrayList<String> = ArrayList()
 
     init {
@@ -45,20 +44,19 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun setHomeDirs() {
-        val result = ArrayList<FileChooserFragment.FileModel>()
+        val result = ArrayList<FileModel>()
         val externalDirs = getExternalFilesDirs(getApplication(), null)
 
         var internalPath = externalDirs[0].absolutePath
         internalPath = internalPath.replaceFirst("/Android.+".toRegex(), "")
         val internalPathFile = File(internalPath)
-        val internalFileModel =
-            FileChooserFragment.FileModel("Internal memory", internalPathFile) // Custom name
+        val internalFileModel = FileModel("Internal memory", internalPathFile) // Custom name
         result.add(internalFileModel)
         if (externalDirs.size > 1) {
             var sdPath = externalDirs[1].absolutePath
             sdPath = sdPath.replaceFirst("/Android.+".toRegex(), "")
             val sdPathFile = File(sdPath)
-            val sdFileModel = FileChooserFragment.FileModel("SD Card", sdPathFile)
+            val sdFileModel = FileModel("SD Card", sdPathFile)
             result.add(sdFileModel)
         }
 
@@ -67,7 +65,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
 
         // first invoke
         if (currentTree == null)
-            currentTree = FileChooserFragment.DirectoryNode(null, null).apply {
+            currentTree = DirectoryNode(null, null).apply {
                 this.childModels.addAll(result)
                 this.initialize()
             }
@@ -75,11 +73,10 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         while (currentTree?.parent != null)
             currentTree = currentTree?.parent
 
-        wasSelectedOneFile = false
         _currentDirs.value = currentTree?.childrenList()!!
     }
 
-    private suspend fun openDir(dir: FileChooserFragment.FileTreeComponent?) {
+    private suspend fun openDir(dir: FileTreeComponent?) {
         if (dir == null)
             return
         // main tree hasn't parent
@@ -89,59 +86,62 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         currentTree = dir
-        _currentPath.value = dir.model?.file?.absolutePath
-        _currentDirName.value = dir.model?.name
+        _currentPath.value = dir.model?.file?.absolutePath ?: ""
+        _currentDirName.value = dir.model?.name ?: ""
 
         withContext(Dispatchers.IO) {
             dir.initialize()
         }
 
-        wasSelectedOneFile = false
         _currentDirs.value = dir.childrenList()!!
     }
 
     suspend fun openPreviousDir() {
         val prevDir = currentTree?.parent
-        if (prevDir?.model == null)
+        if (prevDir?.model == null) {
             setHomeDirs()
-        else
+        } else {
             openDir(prevDir)
+        }
     }
 
     suspend fun onListItemClick(position: Int) {
         val currChild = currentTree!!.childAt(position)
-        if (currChild!!.isDirectory)
+        if (currChild!!.isDirectory) {
+            _currentDirs.value = emptyList()
             openDir(currChild)
-        else
-            selectFile(currChild, position)
+        } else {
+            selectFile(currChild)
+        }
     }
 
     fun onCheckboxClick(position: Int, value: Boolean) {
         currentTree?.childAt(position)?.changeSelected(value)
     }
 
-    private fun selectFile(file: FileChooserFragment.FileTreeComponent, position: Int) {
-        wasSelectedOneFile = true
-        positionSelected = position
+    private fun selectFile(file: FileTreeComponent) {
         file.changeSelected(!file.isSelected)
-        _currentDirs.value = currentTree?.childrenList()!!
     }
 
     fun selectAllCurrent() {
-        if (currentTree?.childrenList()!!.all { it.isSelected })
+        if (currentTree?.childrenList()!!.all { it.isSelected }) {
             currentTree?.childrenList()!!.forEach { it.changeSelected(false) }
-        else
+        } else {
             currentTree?.childrenList()!!.forEach { it.changeSelected(true) }
+        }
 
-        wasSelectedOneFile = false
         _currentDirs.value = currentTree?.childrenList()!!
+    }
+
+    fun getDirectoryAtPosition(position: Int): FileTreeComponent {
+        return currentDirs.value[position]
     }
 
     /**
      * Load selected tracks from tree
      * @param tree Tree which tracks should be loaded
      */
-    private suspend fun loadFiles(tree: FileChooserFragment.FileTreeComponent? = null): ArrayList<String> {
+    private suspend fun loadFiles(tree: FileTreeComponent? = null): ArrayList<String> {
         withContext(Dispatchers.IO) {
             var tmpTree = tree
             if (tree == null) {
@@ -171,7 +171,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
      * Load all files from tree. This function is used to load selected directories.
      * @param tree Tree which files should be loaded
      */
-    private suspend fun loadAllFiles(tree: FileChooserFragment.FileTreeComponent?) {
+    private suspend fun loadAllFiles(tree: FileTreeComponent?) {
         withContext(Dispatchers.IO) {
             for (child in tree?.childrenList()!!) {
                 if (child.isDirectory)
