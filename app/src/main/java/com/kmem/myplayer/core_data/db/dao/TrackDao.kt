@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.room.*
 import com.kmem.myplayer.core_data.db.entities.TrackEntity
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Data access object for tracks in database
@@ -12,7 +13,7 @@ import com.kmem.myplayer.core_data.db.entities.TrackEntity
 interface TrackDao {
 
     @Query("SELECT * FROM track_in_playlist WHERE playlist_id = :playlistId ORDER BY position")
-    fun getTracksFromPlaylistAsLiveData(playlistId: Int): LiveData<List<TrackEntity>>
+    fun getTracksFromPlaylistAsFlow(playlistId: Int): Flow<List<TrackEntity>>
 
     @Query("SELECT * FROM track_in_playlist WHERE playlist_id = :playlistId ORDER BY position")
     fun getTracksFromPlaylist(playlistId: Int): List<TrackEntity>
@@ -34,9 +35,17 @@ interface TrackDao {
             "WHERE uri = :uri AND playlist_id = :playlistId")
     fun updatePositionOfTrack(uri: Uri, playlistId: Int, newPosition: Int)
 
+    @Transaction
+    fun updatePositionsOfTracksTransaction(tracks: List<TrackEntity>) {
+        for (track in tracks) {
+            updatePositionOfTrack(track.uri, track.playlistId, track.position)
+        }
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertTrack(track: TrackEntity)
 
+    @Transaction
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(tracks: List<TrackEntity>)
 

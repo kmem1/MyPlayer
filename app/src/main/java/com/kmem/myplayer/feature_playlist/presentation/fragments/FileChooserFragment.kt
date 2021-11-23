@@ -12,8 +12,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -33,7 +33,7 @@ import java.io.Serializable
 class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
 
     private val currentDirs: ArrayList<FileTreeComponent> = ArrayList()
-    private lateinit var model: FileChooserViewModel
+    private val viewModel: FileChooserViewModel by viewModels()
 
     private var scope = CoroutineScope(Dispatchers.Main + Job())
     private var playlistId: Int = 0
@@ -53,11 +53,9 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
     ): View {
         layout = inflater.inflate(R.layout.fragment_file_chooser, container, false)
 
-        model = ViewModelProvider(this).get(FileChooserViewModel::class.java)
-
-        model.currentDirs.observe(viewLifecycleOwner, currentDirsObserver)
-        model.currentDirName.observe(viewLifecycleOwner, currentDirNameObserver)
-        model.currentPath.observe(viewLifecycleOwner, currentPathObserver)
+        viewModel.currentDirs.observe(viewLifecycleOwner, currentDirsObserver)
+        viewModel.currentDirName.observe(viewLifecycleOwner, currentDirNameObserver)
+        viewModel.currentPath.observe(viewLifecycleOwner, currentPathObserver)
 
         loadingSpinner = layout.findViewById(R.id.progress_bar)
         loadingSpinner.visibility = View.GONE
@@ -65,17 +63,17 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
         playlistId = arguments?.getInt("playlist_id") ?: 0
 
         val previousPathButton = layout.findViewById<ImageButton>(R.id.prev_path_button)
-        previousPathButton.setOnClickListener { scope.launch { model.openPreviousDir() } }
+        previousPathButton.setOnClickListener { scope.launch { viewModel.openPreviousDir() } }
         val homeButton = layout.findViewById<ImageButton>(R.id.home_button)
-        homeButton.setOnClickListener { model.setHomeDirs() }
+        homeButton.setOnClickListener { viewModel.setHomeDirs() }
         val selectAllButton = layout.findViewById<ImageButton>(R.id.select_all)
-        selectAllButton.setOnClickListener { model.selectAllCurrent() }
+        selectAllButton.setOnClickListener { viewModel.selectAllCurrent() }
         val loadButton = layout.findViewById<ImageButton>(R.id.load_files)
+
         loadButton.setOnClickListener {
-            model.loadFilesToRepository(playlistId)
-            val bundle = Bundle()
-            bundle.putInt("playlist_id", playlistId)
-            findNavController().navigate(R.id.action_filechooser_to_playlist, bundle)
+            viewModel.loadFilesToRepository(playlistId)
+            val action = FileChooserFragmentDirections.actionFilechooserToPlaylist(playlistId)
+            findNavController().navigate(action)
         }
 
         list = layout.findViewById(R.id.fileList)
@@ -102,9 +100,9 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
             if (t == null)
                 return
 
-            if (model.wasSelectedOneFile) {
-                currentDirs[model.positionSelected] = t[model.positionSelected]
-                list.adapter?.notifyItemChanged(model.positionSelected)
+            if (viewModel.wasSelectedOneFile) {
+                currentDirs[viewModel.positionSelected] = t[viewModel.positionSelected]
+                list.adapter?.notifyItemChanged(viewModel.positionSelected)
             } else {
                 currentDirs.clear()
                 currentDirs.addAll(t)
@@ -133,18 +131,18 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
                 currentDirs.clear()
                 list.adapter?.notifyDataSetChanged()
 
-                model.onListItemClick(position)
+                viewModel.onListItemClick(position)
 
                 loadingSpinner.visibility = View.GONE
                 list.scrollToPosition(0)
             } else {
-                model.onListItemClick(position)
+                viewModel.onListItemClick(position)
             }
         }
     }
 
     override fun onCheckboxClick(position: Int, value: Boolean) {
-        model.onCheckboxClick(position, value)
+        viewModel.onCheckboxClick(position, value)
     }
 
 

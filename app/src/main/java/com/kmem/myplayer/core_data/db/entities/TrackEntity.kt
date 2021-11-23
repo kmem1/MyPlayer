@@ -59,7 +59,6 @@ data class TrackEntity(
 
         fun fromTrack(
             track: Track,
-            position: Int = 0,
             positionInStack: Int = 0
         ): TrackEntity =
             TrackEntity(
@@ -69,7 +68,7 @@ data class TrackEntity(
                 duration = track.duration,
                 fileName = track.fileName,
                 playlistId = track.playlistId,
-                position = position,
+                position = track.position,
                 positionInStack = positionInStack
             )
     }

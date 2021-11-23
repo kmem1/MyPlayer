@@ -18,22 +18,19 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
+import com.kmem.myplayer.core.domain.repository.NavRepository
 import com.kmem.myplayer.feature_player.service.PlayerService
 import com.kmem.myplayer.core.presentation.adapters.NavListAdapter
 import com.kmem.myplayer.core.presentation.adapters.NavPlaylistsAdapter
 import com.kmem.myplayer.core_data.db.entities.Playlist
 import com.kmem.myplayer.core_data.repositories.MusicRepository
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsAdapter.Listener,
         CreatePlaylistDialogFragment.CreatePlaylistDialogListener,
         DeletePlaylistConfirmationDialogFragment.DeletePlaylistConfirmationDialogListener {
-
-    interface Repository {
-        suspend fun addPlaylist(context: Context, playlistName: String)
-        suspend fun getPlaylists(context: Context): ArrayList<Playlist>
-        suspend fun deletePlaylist(context: Context, playlist: Playlist)
-    }
 
     var lastOpenedPlaylistId = MyApplication.getCurrentPlaylistIdFromPreferences()
 
@@ -43,7 +40,7 @@ class MainActivity : AppCompatActivity(), NavListAdapter.Listener, NavPlaylistsA
     private lateinit var playlistsList: RecyclerView
     private val navPlaylists: ArrayList<Playlist> = ArrayList()
 
-    private val repository: Repository = MusicRepository.getInstance()
+    private val repository: NavRepository = MusicRepository.getInstance()
 
     private var serviceConnection: ServiceConnection? = null
     private var playerService: PlayerService? = null

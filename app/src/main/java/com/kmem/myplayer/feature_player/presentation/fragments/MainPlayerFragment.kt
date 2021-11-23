@@ -324,14 +324,16 @@ class MainPlayerFragment : Fragment() {
     }
 
     private val toPlaylistButtonClickListener = View.OnClickListener {
-        val bundle = Bundle()
         val playlistId = MyApplication.getCurrentPlaylistIdFromPreferences()
+
         if (playlistId == -1) {
             Toast.makeText(requireContext(), "No playlist created", Toast.LENGTH_SHORT).show()
             return@OnClickListener
         }
-        bundle.putInt("playlist_id", MyApplication.getCurrentPlaylistIdFromPreferences())
-        findNavController().navigate(R.id.action_player_to_playlist, bundle)
+
+        val action = MainPlayerFragmentDirections.actionPlayerToPlaylist(playlistId)
+
+        findNavController().navigate(action)
     }
 
     private val metadataObserver = Observer<MediaMetadataCompat?> { newMetadata ->

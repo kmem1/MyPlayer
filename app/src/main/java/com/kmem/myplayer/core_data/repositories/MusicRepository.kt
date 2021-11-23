@@ -2,29 +2,29 @@ package com.kmem.myplayer.core_data.repositories
 
 import android.content.Context
 import android.net.Uri
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.map
 import com.kmem.myplayer.MyApplication
+import com.kmem.myplayer.core.domain.model.PlaylistState
+import com.kmem.myplayer.core.domain.model.Track
+import com.kmem.myplayer.core.domain.repository.NavRepository
 import com.kmem.myplayer.core_data.db.AppDatabase
 import com.kmem.myplayer.core_data.db.entities.Playlist
 import com.kmem.myplayer.core_data.db.entities.TrackEntity
-import com.kmem.myplayer.core.domain.model.PlaylistState
-import com.kmem.myplayer.core.domain.model.Track
-import com.kmem.myplayer.core.presentation.MainActivity
 import com.kmem.myplayer.core_data.db.entities.toTrack
-import com.kmem.myplayer.feature_player.service.PlayerService
-import com.kmem.myplayer.feature_player.presentation.fragments.MainPlayerFragment
-import com.kmem.myplayer.feature_playlist.presentation.fragments.PlaylistFragment
 import com.kmem.myplayer.core_utils.MetadataHelper
+import com.kmem.myplayer.feature_player.presentation.fragments.MainPlayerFragment
+import com.kmem.myplayer.feature_player.service.PlayerService
+import com.kmem.myplayer.feature_playlist.domain.repository.PlaylistRepository
 import com.kmem.myplayer.feature_playlist.presentation.viewmodels.FileChooserViewModel
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.io.File
 
 class MusicRepository : PlayerService.Repository,
-    PlaylistFragment.Repository,
+    PlaylistRepository,
     FileChooserViewModel.Repository,
-    MainActivity.Repository,
+    NavRepository,
     MainPlayerFragment.Repository {
 
     companion object {
@@ -98,7 +98,7 @@ class MusicRepository : PlayerService.Repository,
         }
     }
 
-    override suspend fun deleteTracks(context: Context, tracks: ArrayList<Track>, playlistId: Int) {
+    override suspend fun deleteTracks(context: Context, tracks: List<Track>, playlistId: Int) {
         val updatedTracks = ArrayList<TrackEntity>()
 
         withContext(Dispatchers.IO) {
@@ -123,15 +123,16 @@ class MusicRepository : PlayerService.Repository,
         }
     }
 
-    override fun updatePositions(context: Context, tracks: ArrayList<Track>) {
+    override fun updatePositions(context: Context, tracks: List<Track>) {
         MainScope().launch {
-            val tracksCopy = tracks.toArray()
             withContext(Dispatchers.IO) {
-                for (track in tracksCopy) {
-                    track as Track // type cast
-                    AppDatabase.getInstance(context).trackDao()
-                        .updatePositionOfTrack(track.uri, track.playlistId, track.position)
-                }
+//                for (track in tracksCopy) {
+//                    track as Track // type cast
+//                    AppDatabase.getInstance(context).trackDao()
+//                        .updatePositionOfTrack(track.uri, track.playlistId, track.position)
+//                }
+                AppDatabase.getInstance(context).trackDao()
+                    .updatePositionsOfTracksTransaction(tracks.map { TrackEntity.fromTrack(it) })
             }
 
             val playlistIdOfTracks = tracks[0].playlistId
@@ -175,12 +176,12 @@ class MusicRepository : PlayerService.Repository,
     override suspend fun getTracksFromPlaylist(
         context: Context,
         playlistId: Int
-    ): LiveData<List<Track>> {
-        var tracks: LiveData<List<Track>>?
+    ): Flow<List<Track>> {
+        var tracks: Flow<List<Track>>?
 
         withContext(Dispatchers.IO) {
             tracks = AppDatabase.getInstance(context)
-                .trackDao().getTracksFromPlaylistAsLiveData(playlistId)
+                .trackDao().getTracksFromPlaylistAsFlow(playlistId)
                 .map { list -> list.map { it.toTrack() } }
         }
 
@@ -248,5 +249,4 @@ class MusicRepository : PlayerService.Repository,
             -1
         )
     }
-
 }
