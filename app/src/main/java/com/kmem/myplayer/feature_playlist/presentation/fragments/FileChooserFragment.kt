@@ -18,6 +18,7 @@ import com.kmem.myplayer.R
 import com.kmem.myplayer.databinding.FragmentFileChooserBinding
 import com.kmem.myplayer.feature_playlist.presentation.adapters.FileChooserAdapter
 import com.kmem.myplayer.feature_playlist.presentation.viewmodels.FileChooserViewModel
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,6 +29,8 @@ import kotlinx.coroutines.launch
 /**
  *  Fragment that allows to browse mp3 files and add them to playlist.
  */
+
+@AndroidEntryPoint
 class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
 
     private var _binding: FragmentFileChooserBinding? = null
@@ -56,7 +59,7 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
         binding.selectAllBtn.setOnClickListener { viewModel.selectAllCurrent() }
 
         binding.loadFilesBtn.setOnClickListener {
-            viewModel.loadFilesToRepository(playlistId)
+            viewModel.loadFilesToRepository(requireContext(), playlistId)
             val action = FileChooserFragmentDirections.actionFilechooserToPlaylist(playlistId)
             findNavController().navigate(action)
         }

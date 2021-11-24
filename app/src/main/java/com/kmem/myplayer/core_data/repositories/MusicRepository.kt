@@ -14,8 +14,8 @@ import com.kmem.myplayer.core_data.db.entities.toTrack
 import com.kmem.myplayer.core_utils.MetadataHelper
 import com.kmem.myplayer.feature_player.presentation.fragments.MainPlayerFragment
 import com.kmem.myplayer.feature_player.service.PlayerService
+import com.kmem.myplayer.feature_playlist.domain.repository.FileChooserRepository
 import com.kmem.myplayer.feature_playlist.domain.repository.PlaylistRepository
-import com.kmem.myplayer.feature_playlist.presentation.viewmodels.FileChooserViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -23,7 +23,7 @@ import java.io.File
 
 class MusicRepository : PlayerService.Repository,
     PlaylistRepository,
-    FileChooserViewModel.Repository,
+    FileChooserRepository,
     NavRepository,
     MainPlayerFragment.Repository {
 

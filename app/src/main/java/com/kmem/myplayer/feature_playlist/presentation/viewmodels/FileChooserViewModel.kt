@@ -1,13 +1,14 @@
 package com.kmem.myplayer.feature_playlist.presentation.viewmodels
 
-import android.app.Application
 import android.content.Context
 import androidx.core.content.ContextCompat.getExternalFilesDirs
-import androidx.lifecycle.AndroidViewModel
-import com.kmem.myplayer.core_data.repositories.MusicRepository
+import androidx.lifecycle.ViewModel
+import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.feature_playlist.domain.model.filechooser.DirectoryNode
 import com.kmem.myplayer.feature_playlist.domain.model.filechooser.FileModel
 import com.kmem.myplayer.feature_playlist.domain.model.filechooser.FileTreeComponent
+import com.kmem.myplayer.feature_playlist.domain.repository.FileChooserRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,22 +16,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import javax.inject.Inject
 
 /**
  *  ViewModel for FileChooserFragment.
  *  Works with directories.
  */
 
-class FileChooserViewModel(application: Application) : AndroidViewModel(application) {
-
-    interface Repository {
-        fun addTracks(context: Context, paths: ArrayList<String>, playlistId: Int)
-    }
+@HiltViewModel
+class FileChooserViewModel @Inject constructor(private val repository: FileChooserRepository?) :
+    ViewModel() {
 
     private val _currentPath: MutableStateFlow<String> = MutableStateFlow("")
     private val _currentDirName: MutableStateFlow<String> = MutableStateFlow("")
     private val _currentDirs: MutableStateFlow<List<FileTreeComponent>> =
-            MutableStateFlow(emptyList())
+        MutableStateFlow(emptyList())
 
     val currentPath = _currentPath.asStateFlow()
     val currentDirName = _currentDirName.asStateFlow()
@@ -45,7 +45,7 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setHomeDirs() {
         val result = ArrayList<FileModel>()
-        val externalDirs = getExternalFilesDirs(getApplication(), null)
+        val externalDirs = getExternalFilesDirs(MyApplication.context(), null)
 
         var internalPath = externalDirs[0].absolutePath
         internalPath = internalPath.replaceFirst("/Android.+".toRegex(), "")
@@ -182,10 +182,9 @@ class FileChooserViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun loadFilesToRepository(playlistId: Int) {
-        val repository: Repository = MusicRepository.getInstance()
+    fun loadFilesToRepository(context: Context, playlistId: Int) {
         MainScope().launch {
-            repository.addTracks(getApplication(), loadFiles(), playlistId)
+            repository?.addTracks(context, loadFiles(), playlistId)
         }
     }
 }
