@@ -10,8 +10,8 @@ import com.kmem.myplayer.databinding.FileListItemBinding
 import com.kmem.myplayer.feature_playlist.domain.model.filechooser.FileModel
 import com.kmem.myplayer.feature_playlist.domain.model.filechooser.FileTreeComponent
 
-class FileChooserAdapter(private var listener: Listener? = null)
-    : RecyclerView.Adapter<FileChooserAdapter.ViewHolder>() {
+class FileChooserAdapter(private var listener: Listener? = null) :
+    RecyclerView.Adapter<FileChooserAdapter.ViewHolder>() {
 
     private var treeList: List<FileTreeComponent> = emptyList()
 
@@ -30,7 +30,7 @@ class FileChooserAdapter(private var listener: Listener? = null)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(treeList[position].model!!)
+        holder.bind(treeList[position].model!!, position)
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -40,9 +40,9 @@ class FileChooserAdapter(private var listener: Listener? = null)
     }
 
     inner class ViewHolder(private val binding: FileListItemBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(model: FileModel) {
+        fun bind(model: FileModel, position: Int) {
             if (model.file.isDirectory) {
                 binding.fileIconIv.setImageResource(R.drawable.baseline_folder_24)
             } else {
