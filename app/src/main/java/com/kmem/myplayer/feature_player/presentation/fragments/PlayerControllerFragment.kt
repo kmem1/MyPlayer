@@ -2,8 +2,8 @@ package com.kmem.myplayer.feature_player.presentation.fragments
 
 import android.Manifest
 import android.animation.ObjectAnimator
+import android.annotation.SuppressLint
 import android.content.ComponentName
-import android.content.Context
 import android.content.Context.BIND_AUTO_CREATE
 import android.content.Intent
 import android.content.ServiceConnection
@@ -25,20 +25,24 @@ import android.widget.SeekBar.OnSeekBarChangeListener
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.Observer
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.R
-import com.kmem.myplayer.core_data.db.entities.Playlist
-import com.kmem.myplayer.core_data.repositories.MusicRepository
-import com.kmem.myplayer.feature_playlist.presentation.fragments.PlaylistFragment
+import com.kmem.myplayer.databinding.FragmentPlayerControllerBinding
+import com.kmem.myplayer.feature_player.presentation.viewmodels.PlayerControllerViewModel
 import com.kmem.myplayer.feature_player.service.PlayerService
+import com.kmem.myplayer.feature_playlist.presentation.fragments.PlaylistFragment
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 
 
 /**
@@ -47,7 +51,8 @@ import kotlinx.coroutines.*
  *  Получает информацию от сервиса через PlayerServiceBinder.
  */
 
-class MainPlayerFragment : Fragment() {
+@AndroidEntryPoint
+class PlayerControllerFragment : Fragment() {
 
     companion object {
         private const val FROM_ALPHA = 0.3f
@@ -56,62 +61,44 @@ class MainPlayerFragment : Fragment() {
         private const val PERMISSION_CODE = 600
     }
 
-    interface Repository {
-        val isInitialized: LiveData<Boolean>
+    private var _binding: FragmentPlayerControllerBinding? = null
+    private val binding get() = _binding!!
 
-        suspend fun getPlaylists(context: Context): ArrayList<Playlist>
-    }
+    private val viewModel: PlayerControllerViewModel by viewModels()
 
-    private val repository: Repository = MusicRepository.getInstance()
     private var playerServiceBinder: PlayerService.PlayerServiceBinder? = null
     private var mediaController: MediaControllerCompat? = null
     private var callback: MediaControllerCompat.Callback? = null
     private var serviceConnection: ServiceConnection? = null
     private var playerService: PlayerService? = null
-    private lateinit var layout: View
     private var isPlaying = false
     private var currentState = -1
     private var durationBarJob: Job? = null
     private var isStarted = false
-    private var shuffled = MyApplication.getShuffleModeFromPreferences()
-    private var repeated = false
+    private var shuffleMode = MyApplication.getShuffleModeFromPreferences()
+    private var repeatMode = false
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        // Inflate the layout for this fragment
-        layout = inflater.inflate(R.layout.fragment_main_player, container, false)
+        _binding = FragmentPlayerControllerBinding.inflate(inflater, container, false)
 
-        val prevButton = layout.findViewById<ImageView>(R.id.prev_button)
-        val playButton = layout.findViewById<ImageView>(R.id.play_button)
-        val nextButton = layout.findViewById<ImageView>(R.id.next_button)
-        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
-        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
-        val toPlaylistButton = layout.findViewById<ImageButton>(R.id.to_playlist_button)
+        binding.prevBtn.setOnClickListener(prevButtonClickListener)
+        binding.playBtn.setOnClickListener(playButtonClickListener)
+        binding.nextBtn.setOnClickListener(nextButtonClickListener)
+        binding.shuffleBtn.setOnClickListener(shuffleButtonClickListener)
+        binding.repeatBtn.setOnClickListener(repeatButtonClickListener)
+        binding.toPlaylistBtn.setOnClickListener(toPlaylistButtonClickListener)
 
-        prevButton.setOnClickListener(prevButtonClickListener)
-        playButton.setOnClickListener(playButtonClickListener)
-        nextButton.setOnClickListener(nextButtonClickListener)
-        shuffleButton.setOnClickListener(shuffleButtonClickListener)
-        repeatButton.setOnClickListener(repeatButtonClickListener)
-        toPlaylistButton.setOnClickListener(toPlaylistButtonClickListener)
-
-        MainScope().launch {
-            withContext(Dispatchers.IO) {
-                if (repository.getPlaylists(requireContext()).isNotEmpty()) {
-                    toPlaylistButton.visibility = View.VISIBLE
-                }
-            }
-        }
-
-        shuffleButton.isEnabled = false
-        repeatButton.isEnabled = false
+        binding.shuffleBtn.isEnabled = false
+        binding.repeatBtn.isEnabled = false
 
         // select TextViews for sliding long text
-        layout.findViewById<TextView>(R.id.track_title).isSelected = true
-        layout.findViewById<TextView>(R.id.artist).isSelected = true
+        binding.trackTitleTv.isSelected = true
+        binding.artistTv.isSelected = true
 
         callback = object : MediaControllerCompat.Callback() {
             override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
@@ -129,18 +116,19 @@ class MainPlayerFragment : Fragment() {
                     return
                 }
 
-                val positionView = layout.findViewById<SeekBar>(R.id.duration_bar)
                 isPlaying = state.state == PlaybackStateCompat.STATE_PLAYING
                 if (isPlaying) {
-                    playButton.setImageResource(R.drawable.baseline_pause_24)
+                    binding.playBtn.setImageResource(R.drawable.baseline_pause_24)
                     durationBarJob?.cancel()
-                    if (isStarted)
+
+                    if (isStarted) {
                         runDurationBarUpdate()
+                    }
                 } else {
-                    playButton.setImageResource(R.drawable.baseline_play_arrow_24)
+                    binding.playBtn.setImageResource(R.drawable.baseline_play_arrow_24)
                     durationBarJob?.cancel()
                     val position = mediaController?.playbackState?.position?.toInt() ?: 0
-                    positionView.progress = position
+                    binding.durationSb.progress = position
                     updateCurrentDurationView(position)
                 }
             }
@@ -154,14 +142,13 @@ class MainPlayerFragment : Fragment() {
                         ?.let { MediaControllerCompat(activity, it) }
                     mediaController?.registerCallback(callback!!)
                     callback?.onPlaybackStateChanged(mediaController?.playbackState)
-                    playerServiceBinder!!.getLiveMetadata()
-                        .observe(viewLifecycleOwner, metadataObserver)
                     playerService = playerServiceBinder!!.getService()
-                    shuffled = playerService?.getShuffle() ?: false
-                    repeated = playerService?.repeatMode ?: false
-                    shuffleButton.alpha = if (shuffled) TO_ALPHA else FROM_ALPHA
-                    repeatButton.alpha = if (repeated) TO_ALPHA else FROM_ALPHA
-                    observeRepositoryInitialization()
+                    val metadataFlow = playerServiceBinder?.getMetadataFlow()
+                    observeMetadataFromFlow(metadataFlow)
+                    shuffleMode = playerService?.shuffleMode ?: false
+                    repeatMode = playerService?.repeatMode ?: false
+                    binding.shuffleBtn.alpha = if (shuffleMode) TO_ALPHA else FROM_ALPHA
+                    binding.repeatBtn.alpha = if (repeatMode) TO_ALPHA else FROM_ALPHA
                 } catch (e: RemoteException) {
                     mediaController = null
                 }
@@ -185,8 +172,9 @@ class MainPlayerFragment : Fragment() {
         checkPlaylistExistence()
         setupToolbar()
         setupDurationBarListener()
+        observeCurrentTrackFromViewModel()
 
-        return layout
+        return binding.root
     }
 
     override fun onStart() {
@@ -194,17 +182,14 @@ class MainPlayerFragment : Fragment() {
 
         if (!checkPermission()) requestPermission()
 
-        val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
         // update duration if there is already playing track on pause
-        durationBar.progress = mediaController?.playbackState?.position?.toInt() ?: 0
+        binding.durationSb.progress = mediaController?.playbackState?.position?.toInt() ?: 0
 
-        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
-        shuffled = playerService?.getShuffle() ?: false
-        shuffleButton.alpha = if (shuffled) TO_ALPHA else FROM_ALPHA
+        shuffleMode = playerService?.shuffleMode ?: false
+        binding.shuffleBtn.alpha = if (shuffleMode) TO_ALPHA else FROM_ALPHA
 
-        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
-        repeated = playerService?.repeatMode ?: false
-        repeatButton.alpha = if (repeated) TO_ALPHA else FROM_ALPHA
+        repeatMode = playerService?.repeatMode ?: false
+        binding.repeatBtn.alpha = if (repeatMode) TO_ALPHA else FROM_ALPHA
 
         if (isPlaying) runDurationBarUpdate()
 
@@ -220,38 +205,72 @@ class MainPlayerFragment : Fragment() {
     override fun onDestroy() {
         super.onDestroy()
         playerServiceBinder = null
+
         if (mediaController != null) {
             mediaController?.unregisterCallback(callback!!)
             mediaController = null
         }
+
         durationBarJob?.cancel()
         activity?.unbindService(serviceConnection!!)
+    }
+
+    private fun observeMetadataFromFlow(metadataFlow: StateFlow<MediaMetadataCompat?>?) {
+        lifecycleScope.launchWhenCreated {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                metadataFlow?.collectLatest { newMetadata ->
+                    viewModel.setMetadata(newMetadata)
+                }
+            }
+        }
+    }
+
+    private fun observeCurrentTrackFromViewModel() {
+        lifecycleScope.launchWhenCreated {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.currentTrackInfo.collectLatest { trackInfo ->
+                    if (trackInfo == null) return@collectLatest
+
+                    if (currentState == PlaybackStateCompat.STATE_STOPPED || currentState == -1) {
+                        return@collectLatest
+                    }
+
+                    binding.shuffleBtn.isEnabled = true
+                    binding.repeatBtn.isEnabled = true
+                    binding.durationSb.isEnabled = true
+
+                    binding.artistTv.text = trackInfo.artist
+                    binding.trackTitleTv.text = trackInfo.title
+                    binding.maxDurationTv.text = trackInfo.durationString
+                    binding.durationSb.max = trackInfo.duration
+                    binding.albumImg.setImageBitmap(trackInfo.albumImgBitmap)
+                }
+            }
+        }
     }
 
     /**
      * Hides "To playlist" button if there is no playlist created
      */
     private fun checkPlaylistExistence() {
-        val toPlaylistButton = layout.findViewById<ImageButton>(R.id.to_playlist_button)
-        val playlists = ArrayList<Playlist>()
-        MainScope().launch {
-            withContext(Dispatchers.IO) {
-                playlists.addAll(repository.getPlaylists(requireContext()))
+        lifecycleScope.launch {
+            if (viewModel.isPlaylistCreated(requireContext())) {
+                binding.toPlaylistBtn.visibility = View.VISIBLE
+            } else {
+                binding.toPlaylistBtn.visibility = View.GONE
             }
-            if (playlists.isEmpty()) toPlaylistButton.visibility = View.GONE
         }
     }
 
     private fun setupToolbar() {
-        val toolbar = layout.findViewById<Toolbar>(R.id.toolbar)
         val drawer = activity?.findViewById<DrawerLayout>(R.id.drawer)
-        (activity as AppCompatActivity).setSupportActionBar(toolbar)
+        (activity as AppCompatActivity).setSupportActionBar(binding.toolbar)
         drawer?.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
 
         val toggle = ActionBarDrawerToggle(
             activity,
             drawer,
-            toolbar,
+            binding.toolbar,
             R.string.navigation_drawer_open,
             R.string.navigation_drawer_close
         )
@@ -261,28 +280,20 @@ class MainPlayerFragment : Fragment() {
         toggle.syncState()
     }
 
-    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun observeRepositoryInitialization() {
-        repository.isInitialized.observe(viewLifecycleOwner) { value ->
-            if (value) {
-                playerService?.onRepositoryInitialized()
-            }
-        }
-    }
-
     private val playButtonClickListener = View.OnClickListener {
         if (mediaController != null) {
-            if (isPlaying)
+            if (isPlaying) {
                 mediaController?.transportControls?.pause()
-            else
+            } else {
                 mediaController?.transportControls?.play()
+            }
         }
     }
 
     private val nextButtonClickListener = View.OnClickListener {
         if (mediaController != null) {
             // nullify duration
-            layout.findViewById<SeekBar>(R.id.duration_bar).progress = 0
+            binding.durationSb.progress = 0
             mediaController?.transportControls?.skipToNext()
         }
     }
@@ -290,37 +301,36 @@ class MainPlayerFragment : Fragment() {
     private val prevButtonClickListener = View.OnClickListener {
         if (mediaController != null) {
             // nullify duration
-            layout.findViewById<SeekBar>(R.id.duration_bar).progress = 0
+            binding.durationSb.progress = 0
             mediaController?.transportControls?.skipToPrevious()
         }
     }
 
     private val shuffleButtonClickListener = View.OnClickListener {
-        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
         var fromAlpha = FROM_ALPHA
         var toAlpha = TO_ALPHA
-        if (shuffled)
+        if (shuffleMode)
             fromAlpha = toAlpha.also { toAlpha = fromAlpha }
         val alphaAnimator =
-            ObjectAnimator.ofFloat(shuffleButton, View.ALPHA, fromAlpha, toAlpha)
+            ObjectAnimator.ofFloat(binding.shuffleBtn, View.ALPHA, fromAlpha, toAlpha)
         alphaAnimator.duration = 200
         alphaAnimator.start()
-        shuffled = !shuffled
-        playerService?.setShuffle(shuffled)
-        MyApplication.setShuffleModeInPreferences(shuffled)
+        shuffleMode = !shuffleMode
+        playerService?.shuffleMode = shuffleMode
+        MyApplication.setShuffleModeInPreferences(shuffleMode)
     }
 
     private val repeatButtonClickListener = View.OnClickListener {
-        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
         var fromAlpha = FROM_ALPHA
         var toAlpha = TO_ALPHA
-        if (repeated)
+        if (repeatMode)
             fromAlpha = toAlpha.also { toAlpha = fromAlpha }
-        val alphaAnimator = ObjectAnimator.ofFloat(repeatButton, View.ALPHA, fromAlpha, toAlpha)
+        val alphaAnimator =
+            ObjectAnimator.ofFloat(binding.repeatBtn, View.ALPHA, fromAlpha, toAlpha)
         alphaAnimator.duration = 200
         alphaAnimator.start()
-        repeated = !repeated
-        playerService?.repeatMode = repeated
+        repeatMode = !repeatMode
+        playerService?.repeatMode = repeatMode
     }
 
     private val toPlaylistButtonClickListener = View.OnClickListener {
@@ -331,83 +341,44 @@ class MainPlayerFragment : Fragment() {
             return@OnClickListener
         }
 
-        val action = MainPlayerFragmentDirections.actionPlayerToPlaylist(playlistId)
+        val action = PlayerControllerFragmentDirections.actionPlayerToPlaylist(playlistId)
 
         findNavController().navigate(action)
     }
 
-    private val metadataObserver = Observer<MediaMetadataCompat?> { newMetadata ->
-        Log.d("state", "$currentState")
-        if (currentState == PlaybackStateCompat.STATE_STOPPED || currentState == -1) return@Observer
-
-        val artistView = layout.findViewById<TextView>(R.id.artist)
-        val titleView = layout.findViewById<TextView>(R.id.track_title)
-        val albumImageView = layout.findViewById<ImageView>(R.id.album_image)
-        val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
-        val maxDurationView = layout.findViewById<TextView>(R.id.max_duration)
-        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
-        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
-
-        shuffleButton.isEnabled = true
-        repeatButton.isEnabled = true
-
-        if (newMetadata?.getString(MediaMetadataCompat.METADATA_KEY_ARTIST) == "Unknown") {
-            artistView.text = ""
-        } else {
-            artistView.text = newMetadata?.getString(MediaMetadataCompat.METADATA_KEY_ARTIST)
-        }
-        titleView.text = newMetadata?.getString(MediaMetadataCompat.METADATA_KEY_TITLE)
-        albumImageView.setImageBitmap(newMetadata?.getBitmap(MediaMetadataCompat.METADATA_KEY_ART))
-        durationBar.max =
-            newMetadata?.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)?.toInt() ?: 1
-        durationBar.isEnabled = true
-        val mins = newMetadata!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) / 1000 / 60
-        val secs = newMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) / 1000 % 60
-        val duration = if (secs < 10) "$mins:0$secs" else "$mins:$secs" // "0:00" duration format
-        maxDurationView.text = duration
-    }
-
+    @SuppressLint("SetTextI18n")
     private fun clearPlayer() {
-        val artistView = layout.findViewById<TextView>(R.id.artist)
-        val titleView = layout.findViewById<TextView>(R.id.track_title)
-        val albumImageView = layout.findViewById<ImageView>(R.id.album_image)
-        val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
-        val maxDurationView = layout.findViewById<TextView>(R.id.max_duration)
-        val shuffleButton = layout.findViewById<ImageButton>(R.id.shuffle_button)
-        val repeatButton = layout.findViewById<ImageButton>(R.id.repeat_button)
-        val playButton = layout.findViewById<ImageView>(R.id.play_button)
-
-        artistView.text = ""
-        titleView.text = ""
-        durationBar.isEnabled = false
-        durationBar.progress = 0
+        binding.artistTv.text = ""
+        binding.trackTitleTv.text = ""
+        binding.durationSb.isEnabled = false
+        binding.durationSb.progress = 0
         updateCurrentDurationView(0)
-        maxDurationView.text = "0:00"
-        albumImageView.setImageBitmap(
-            BitmapFactory.decodeResource(resources, R.drawable.without_album))
+        binding.maxDurationTv.text = "0:00"
 
-        shuffleButton.isEnabled = false
-        repeatButton.isEnabled = false
+        binding.albumImg.setImageBitmap(
+            BitmapFactory.decodeResource(resources, R.drawable.without_album)
+        )
+
+        binding.shuffleBtn.isEnabled = false
+        binding.repeatBtn.isEnabled = false
         isPlaying = false
-        playButton.setImageResource(R.drawable.baseline_play_arrow_24)
+        binding.repeatBtn.setImageResource(R.drawable.baseline_play_arrow_24)
     }
 
     private fun updateCurrentDurationView(position: Int) {
-        val currDurationView = layout.findViewById<TextView>(R.id.curr_duration)
         val mins = position / 1000 / 60
         val secs = position / 1000 % 60
         val duration = if (secs < 10) "$mins:0$secs" else "$mins:$secs" // "0:00" duration format
-        currDurationView.text = duration
+        binding.currDurationTv.text = duration
     }
 
     private fun setupDurationBarListener() {
-        val durationBar = layout.findViewById<SeekBar>(R.id.duration_bar)
-        durationBar.isEnabled = false
-        durationBar.setOnSeekBarChangeListener(object : OnSeekBarChangeListener {
+        binding.durationSb.isEnabled = false
+        binding.durationSb.setOnSeekBarChangeListener(object : OnSeekBarChangeListener {
             var changedDuration = 0
             override fun onStopTrackingTouch(seekBar: SeekBar) {
                 mediaController?.transportControls?.seekTo(changedDuration.toLong())
-                durationBar.progress = changedDuration
+                binding.durationSb.progress = changedDuration
                 if (isPlaying)
                     runDurationBarUpdate(true)
             }
@@ -428,12 +399,11 @@ class MainPlayerFragment : Fragment() {
     private fun runDurationBarUpdate(onSeek: Boolean = false) {
         if (durationBarJob == null || durationBarJob!!.isCancelled) {
             durationBarJob = MainScope().launch {
-                val positionView = layout.findViewById<SeekBar>(R.id.duration_bar)
                 if (onSeek)
                     delay(100) // wait for exo player to seek
                 while (true) {
                     val position = mediaController?.playbackState?.position?.toInt() ?: 0
-                    positionView.progress = position
+                    binding.durationSb.progress = position
                     updateCurrentDurationView(position)
                     delay(500)
                 }
@@ -442,7 +412,7 @@ class MainPlayerFragment : Fragment() {
     }
 
     private fun checkPermission(): Boolean {
-        // shouldn't ask for permission if it isn't granted before
+        // shouldn't ask for permission if it wasn't granted before
         if (!MyApplication.wasPermissionAlreadyGranted()) return true
 
         return ContextCompat.checkSelfPermission(

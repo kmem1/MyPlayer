@@ -7,9 +7,9 @@
 
     <fragment
         android:id="@+id/nav_player"
-        android:name="com.kmem.myplayer.feature_player.presentation.fragments.MainPlayerFragment"
+        android:name="com.kmem.myplayer.feature_player.presentation.fragments.PlayerControllerFragment"
         android:label="fragment_main_player"
-        tools:layout="@layout/fragment_main_player" >
+        tools:layout="@layout/fragment_player_controller" >
         <action
             android:id="@+id/action_player_to_playlist"
             app:destination="@id/nav_playlist" />

@@ -23,8 +23,6 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.media.session.MediaButtonReceiver
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
@@ -41,6 +39,9 @@ import com.kmem.myplayer.core.domain.model.Track
 import com.kmem.myplayer.core.presentation.MainActivity
 import com.kmem.myplayer.core_data.repositories.MusicRepository
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.util.*
 
@@ -99,14 +100,27 @@ class PlayerService : Service() {
     private var inactivityCheckJob: Job? = null
     private var savePlaylistStateJob: Job? = null
 
-    private val _currentMetadata = MutableLiveData<MediaMetadataCompat?>()
-    private val _currentUri = MutableLiveData<Uri>()
+    private val _currentMetadata = MutableStateFlow<MediaMetadataCompat?>(null)
+//    private val _currentUri = MutableLiveData<Uri>()
+//
+    val currentMetadata = _currentMetadata.asStateFlow()
+//    val currentUri: LiveData<Uri> = _currentUri
 
-    val currentMetadata: LiveData<MediaMetadataCompat?> = _currentMetadata
-    val currentUri: LiveData<Uri> = _currentUri
+    private val _currentTrack = MutableStateFlow<Track?>(null)
+    val currentTrack = _currentTrack.asStateFlow()
+
     var repeatMode: Boolean = MyApplication.getRepeatModeFromPreferences()
         set(value) {
             MyApplication.setRepeatModeInPreferences(value)
+            field = value
+        }
+
+    var shuffleMode: Boolean = false
+        get() {
+            return musicRepository.shuffle
+        }
+        set(value) {
+            musicRepository.shuffle = value
             field = value
         }
 
@@ -202,7 +216,7 @@ class PlayerService : Service() {
                     this@PlayerService, MyApplication.getCurrentPlaylistIdFromPreferences()
                 )
                 prepareToPlay(track)
-                _currentUri.value = Uri.EMPTY
+                _currentTrack.value = track
 
                 exoPlayer?.seekTo(state.position.toLong())
                 setPlaybackState(MyApplication.getPlaybackStateFromPreferences())
@@ -219,14 +233,6 @@ class PlayerService : Service() {
 
     fun onCurrentPlaylistDeleted() {
         mediaSessionCallback.onStop()
-    }
-
-    fun setShuffle(value: Boolean) {
-        musicRepository.shuffle = value
-    }
-
-    fun getShuffle(): Boolean {
-        return musicRepository.shuffle
     }
 
     /**
@@ -332,14 +338,18 @@ class PlayerService : Service() {
             var track = musicRepository.getNext()
             if (isTrackNull(track)) return
 
-            while (!checkFileExistence(track!!.uri, false) && track.uri != currentUri.value) {
+            while (!checkFileExistence(track!!.uri, false)) {
+                if (track.uri == currentTrack.value?.uri) {
+                    break
+                }
+
                 track = musicRepository.getNext()
             }
 
             // all tracks are deleted from memory
             if (!checkFileExistence(track.uri, showMessage = false)) onStop()
 
-            if (track.uri == currentUri.value) {
+            if (track.uri == currentTrack.value?.uri) {
                 exoPlayer?.seekTo(0)
             } else {
                 prepareToPlay(track)
@@ -355,14 +365,18 @@ class PlayerService : Service() {
             var track = musicRepository.getPrevious()
             if (isTrackNull(track)) return
 
-            while (!checkFileExistence(track!!.uri, false) && track!!.uri != currentUri.value) {
+            while (!checkFileExistence(track!!.uri, false)) {
+                if (track!!.uri == currentTrack.value?.uri) {
+                    break
+                }
+
                 track = musicRepository.getPrevious()
             }
 
             // all tracks are deleted from memory
             if (!checkFileExistence(track!!.uri, showMessage = false)) onStop()
 
-            if (track!!.uri == currentUri.value) {
+            if (track!!.uri == currentTrack.value?.uri) {
                 exoPlayer?.seekTo(0)
             } else {
                 prepareToPlay(track!!)
@@ -383,7 +397,7 @@ class PlayerService : Service() {
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onRemoveQueueItem(description: MediaDescriptionCompat?) {
-            if (musicRepository.getCurrent()?.uri != currentUri.value) {
+            if (musicRepository.getCurrent()?.uri != currentTrack.value?.uri) {
                 val track = musicRepository.getCurrent()
 
                 if (track == null || !checkFileExistence(track.uri)) {
@@ -513,11 +527,11 @@ class PlayerService : Service() {
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     private fun prepareToPlay(track: Track) {
-        if (track.uri != currentUri.value || repeatMode) {
-            if (track.uri != currentUri.value) {
+        if (track.uri != currentTrack.value?.uri || repeatMode) {
+            if (track.uri != currentTrack.value?.uri) {
                 updateMetadataFromTrack(track)
             }
-            _currentUri.value = track.uri
+            _currentTrack.value = track
             val mediaItem = MediaItem.fromUri(track.uri)
             val mediaSource =
                 ProgressiveMediaSource.Factory(dataSourceFactory!!, extractorsFactory!!)
@@ -630,12 +644,12 @@ class PlayerService : Service() {
             return mediaSession?.sessionToken
         }
 
-        fun getLiveMetadata(): LiveData<MediaMetadataCompat?> {
+        fun getMetadataFlow(): StateFlow<MediaMetadataCompat?> {
             return currentMetadata
         }
 
-        fun getLiveUri(): LiveData<Uri> {
-            return currentUri
+        fun getCurrentTrackFlow(): StateFlow<Track?> {
+            return currentTrack
         }
 
         fun getService(): PlayerService {

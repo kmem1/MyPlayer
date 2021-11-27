@@ -14,6 +14,7 @@ import android.os.IBinder
 import android.os.RemoteException
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -26,7 +27,6 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
@@ -44,6 +44,7 @@ import com.kmem.myplayer.feature_playlist.presentation.adapters.PlaylistAdapter
 import com.kmem.myplayer.feature_playlist.presentation.helpers.PlaylistItemTouchHelperCallback
 import com.kmem.myplayer.feature_playlist.presentation.viewmodels.PlaylistViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -63,10 +64,12 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         const val PERMISSION_CODE_FOR_PLAYING_TRACKS = 597
     }
 
-    private val viewModel: PlaylistViewModel by viewModels()
-
     private var _binding: FragmentPlaylistBinding? = null
     private val binding get() = _binding!!
+
+    private val viewModel: PlaylistViewModel by viewModels()
+
+    private var currentTrackFlow: StateFlow<Track?>? = null
 
     private val args: PlaylistFragmentArgs by navArgs()
 
@@ -120,8 +123,9 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
                     mediaController = playerServiceBinder!!.getMediaSessionToken()
                         ?.let { MediaControllerCompat(activity, it) }
                     mediaController?.registerCallback(callback!!)
+                    currentTrackFlow = playerServiceBinder?.getCurrentTrackFlow()
+                    observeCurrentTrackFromService()
                     callback?.onPlaybackStateChanged(mediaController?.playbackState)
-                    playerServiceBinder!!.getLiveUri().observe(viewLifecycleOwner, uriObserver)
                     playerService = playerServiceBinder?.getService()
                 } catch (e: RemoteException) {
                     mediaController = null
@@ -168,6 +172,17 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
         activity?.unbindService(serviceConnection!!)
     }
 
+    private fun observeCurrentTrackFromService() {
+        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                currentTrackFlow?.collectLatest { track ->
+                    Toast.makeText(requireContext(), "New Track", Toast.LENGTH_SHORT).show()
+                    Log.d("qwe", "$track")
+                }
+            }
+        }
+    }
+
     private val removeButtonClickListener = View.OnClickListener {
         deleteMode = !deleteMode
         onDeleteModeChanged()
@@ -210,13 +225,6 @@ class PlaylistFragment : Fragment(), PlaylistAdapter.Listener {
             findNavController().navigate(action)
         } else {
             requestPermission(PERMISSION_CODE_FOR_FILECHOOSER)
-        }
-    }
-
-    private val uriObserver = Observer<Uri> { newUri ->
-        if (MyApplication.getCurrentPlaylistIdFromPreferences() == playlistId) {
-            currentUri = newUri
-            binding.songsListRv.adapter?.notifyDataSetChanged()
         }
     }
 

@@ -12,7 +12,8 @@ import com.kmem.myplayer.core_data.db.entities.Playlist
 import com.kmem.myplayer.core_data.db.entities.TrackEntity
 import com.kmem.myplayer.core_data.db.entities.toTrack
 import com.kmem.myplayer.core_utils.MetadataHelper
-import com.kmem.myplayer.feature_player.presentation.fragments.MainPlayerFragment
+import com.kmem.myplayer.feature_player.domain.repository.PlayerControllerRepository
+import com.kmem.myplayer.feature_player.presentation.fragments.PlayerControllerFragment
 import com.kmem.myplayer.feature_player.service.PlayerService
 import com.kmem.myplayer.feature_playlist.domain.repository.FileChooserRepository
 import com.kmem.myplayer.feature_playlist.domain.repository.PlaylistRepository
@@ -25,7 +26,7 @@ class MusicRepository : PlayerService.Repository,
     PlaylistRepository,
     FileChooserRepository,
     NavRepository,
-    MainPlayerFragment.Repository {
+    PlayerControllerRepository {
 
     companion object {
         private var instance: MusicRepository? = null

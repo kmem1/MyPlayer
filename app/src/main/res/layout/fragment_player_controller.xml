@@ -13,7 +13,7 @@
         android:background="@color/white">
 
         <ImageButton
-            android:id="@+id/to_playlist_button"
+            android:id="@+id/to_playlist_btn"
             android:layout_width="?attr/actionBarSize"
             android:layout_height="?attr/actionBarSize"
             android:layout_gravity="end"
@@ -28,22 +28,22 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".feature_player.presentation.fragments.MainPlayerFragment">
+        tools:context=".feature_player.presentation.fragments.PlayerControllerFragment">
 
         <ImageView
-            android:id="@+id/prev_button"
+            android:id="@+id/prev_btn"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginEnd="20dp"
             android:background="#FFFFFF"
             android:src="@drawable/baseline_keyboard_arrow_left_24"
-            app:layout_constraintBottom_toBottomOf="@+id/play_button"
-            app:layout_constraintEnd_toStartOf="@+id/play_button"
-            app:layout_constraintTop_toTopOf="@+id/play_button"
+            app:layout_constraintBottom_toBottomOf="@+id/play_btn"
+            app:layout_constraintEnd_toStartOf="@+id/play_btn"
+            app:layout_constraintTop_toTopOf="@+id/play_btn"
             app:layout_constraintWidth_percent="0.12" />
 
         <ImageView
-            android:id="@+id/play_button"
+            android:id="@+id/play_btn"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:src="@drawable/baseline_play_arrow_24"
@@ -56,14 +56,14 @@
             app:layout_constraintWidth_percent="0.2" />
 
         <ImageView
-            android:id="@+id/next_button"
+            android:id="@+id/next_btn"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginStart="20dp"
             android:src="@drawable/baseline_keyboard_arrow_right_24"
-            app:layout_constraintBottom_toBottomOf="@+id/play_button"
-            app:layout_constraintStart_toEndOf="@+id/play_button"
-            app:layout_constraintTop_toTopOf="@+id/play_button"
+            app:layout_constraintBottom_toBottomOf="@+id/play_btn"
+            app:layout_constraintStart_toEndOf="@+id/play_btn"
+            app:layout_constraintTop_toTopOf="@+id/play_btn"
             app:layout_constraintWidth_percent="0.12" />
 
         <LinearLayout
@@ -72,14 +72,14 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
             android:orientation="vertical"
-            app:layout_constraintBottom_toTopOf="@+id/duration_bar"
+            app:layout_constraintBottom_toTopOf="@+id/duration_sb"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/card_view"
             app:layout_constraintWidth_percent="0.7">
 
             <TextView
-                android:id="@+id/track_title"
+                android:id="@+id/track_title_tv"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -100,7 +100,7 @@
                 app:layout_constraintVertical_bias="0.100000024" />
 
             <TextView
-                android:id="@+id/artist"
+                android:id="@+id/artist_tv"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
@@ -133,7 +133,7 @@
             app:cardElevation="12dp">
 
             <ImageView
-                android:id="@+id/album_image"
+                android:id="@+id/album_img"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scaleType="fitXY"
@@ -141,11 +141,11 @@
         </androidx.cardview.widget.CardView>
 
         <SeekBar
-            android:id="@+id/duration_bar"
+            android:id="@+id/duration_sb"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:max="1000000"
-            app:layout_constraintBottom_toTopOf="@+id/play_button"
+            app:layout_constraintBottom_toTopOf="@+id/play_btn"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/card_view"
@@ -153,56 +153,56 @@
             app:layout_constraintWidth_percent="0.75" />
 
         <TextView
-            android:id="@+id/curr_duration"
+            android:id="@+id/curr_duration_tv"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:text="0:00"
-            app:layout_constraintBottom_toBottomOf="@+id/duration_bar"
-            app:layout_constraintEnd_toStartOf="@+id/duration_bar"
+            app:layout_constraintBottom_toBottomOf="@+id/duration_sb"
+            app:layout_constraintEnd_toStartOf="@+id/duration_sb"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/duration_bar" />
+            app:layout_constraintTop_toTopOf="@+id/duration_sb" />
 
         <TextView
-            android:id="@+id/max_duration"
+            android:id="@+id/max_duration_tv"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:text="0:00"
-            app:layout_constraintBottom_toBottomOf="@+id/duration_bar"
+            app:layout_constraintBottom_toBottomOf="@+id/duration_sb"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/duration_bar"
-            app:layout_constraintTop_toTopOf="@+id/duration_bar" />
+            app:layout_constraintStart_toEndOf="@+id/duration_sb"
+            app:layout_constraintTop_toTopOf="@+id/duration_sb" />
 
         <ImageButton
-            android:id="@+id/shuffle_button"
+            android:id="@+id/shuffle_btn"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="@drawable/baseline_shuffle_enabled_24"
             android:scaleType="fitCenter"
-            app:layout_constraintBottom_toBottomOf="@+id/prev_button"
+            app:layout_constraintBottom_toBottomOf="@+id/prev_btn"
             app:layout_constraintDimensionRatio="1:1"
-            app:layout_constraintEnd_toStartOf="@+id/prev_button"
+            app:layout_constraintEnd_toStartOf="@+id/prev_btn"
             app:layout_constraintHorizontal_bias="0.25"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/prev_button"
+            app:layout_constraintTop_toTopOf="@+id/prev_btn"
             app:layout_constraintVertical_bias="0.511"
             app:layout_constraintWidth_percent="0.1" />
 
         <ImageButton
-            android:id="@+id/repeat_button"
+            android:id="@+id/repeat_btn"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="@null"
             android:scaleType="fitCenter"
             android:src="@drawable/baseline_repeat_24"
             app:tint="#5C5C5C"
-            app:layout_constraintBottom_toBottomOf="@+id/next_button"
+            app:layout_constraintBottom_toBottomOf="@+id/next_btn"
             app:layout_constraintDimensionRatio="1:1"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.75"
-            app:layout_constraintStart_toEndOf="@+id/next_button"
-            app:layout_constraintTop_toTopOf="@+id/next_button"
+            app:layout_constraintStart_toEndOf="@+id/next_btn"
+            app:layout_constraintTop_toTopOf="@+id/next_btn"
             app:layout_constraintVertical_bias="0.526"
             app:layout_constraintWidth_percent="0.1" />
 
