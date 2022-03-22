@@ -21,7 +21,7 @@
         android:label="fragment_playlist"
         tools:layout="@layout/fragment_playlist" >
         <action
-            android:id="@+id/action_playlist_to_filechooser"
+            android:id="@+id/to_filechooser"
             app:destination="@id/nav_filechooser" />
         <argument
             android:name="playlist_id"

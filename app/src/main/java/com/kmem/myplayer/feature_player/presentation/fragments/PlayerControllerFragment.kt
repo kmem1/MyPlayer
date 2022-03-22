@@ -16,12 +16,12 @@ import android.os.RemoteException
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
@@ -40,9 +40,12 @@ import com.kmem.myplayer.feature_player.presentation.viewmodels.PlayerController
 import com.kmem.myplayer.feature_player.service.PlayerService
 import com.kmem.myplayer.feature_playlist.presentation.fragments.PlaylistFragment
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 
 /**
@@ -106,12 +109,9 @@ class PlayerControllerFragment : Fragment() {
 
                 currentState = state.state
 
-                Log.d("qwe", "state changed ${state.state}")
-
                 if (state.state == PlaybackStateCompat.STATE_STOPPED) {
                     clearPlayer()
                     durationBarJob?.cancel()
-                    Log.d("qwe", "onStop")
                     checkPlaylistExistence()
                     return
                 }
@@ -207,17 +207,20 @@ class PlayerControllerFragment : Fragment() {
         playerServiceBinder = null
 
         if (mediaController != null) {
-            mediaController?.unregisterCallback(callback!!)
+            callback?.let { mediaController?.unregisterCallback(callback!!) }
             mediaController = null
         }
 
         durationBarJob?.cancel()
-        activity?.unbindService(serviceConnection!!)
+
+        serviceConnection?.let {
+            activity?.unbindService(serviceConnection!!)
+        }
     }
 
     private fun observeMetadataFromFlow(metadataFlow: StateFlow<MediaMetadataCompat?>?) {
-        lifecycleScope.launchWhenCreated {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 metadataFlow?.collectLatest { newMetadata ->
                     viewModel.setMetadata(newMetadata)
                 }
@@ -226,8 +229,8 @@ class PlayerControllerFragment : Fragment() {
     }
 
     private fun observeCurrentTrackFromViewModel() {
-        lifecycleScope.launchWhenCreated {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.currentTrackInfo.collectLatest { trackInfo ->
                     if (trackInfo == null) return@collectLatest
 

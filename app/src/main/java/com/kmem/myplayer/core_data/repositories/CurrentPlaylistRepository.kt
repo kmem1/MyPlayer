@@ -233,7 +233,6 @@ class CurrentPlaylistRepository {
     private suspend fun updateStackPositionsInDatabase() {
         withContext(Dispatchers.IO) {
             for ((index, track) in shuffleStack.withIndex()) {
-                Log.d("qwe", "$index $track")
                 track.positionInStack = index
                 AppDatabase.getInstance(MyApplication.context())
                     .trackDao().updateStackPositionOfTrack(track.uri, track.playlistId, index)
@@ -255,7 +254,6 @@ class CurrentPlaylistRepository {
     }
 
     private fun refreshShuffleData() {
-        Log.d("qwe", "$shuffleStack")
         val prevLastTrack = shuffleStack.removeLast()
         shuffleData.addAll(shuffleStack)
         shuffleData.shuffle()

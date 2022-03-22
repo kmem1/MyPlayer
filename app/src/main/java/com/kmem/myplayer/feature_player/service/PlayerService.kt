@@ -37,30 +37,23 @@ import com.kmem.myplayer.R
 import com.kmem.myplayer.core.domain.model.PlaylistState
 import com.kmem.myplayer.core.domain.model.Track
 import com.kmem.myplayer.core.presentation.MainActivity
-import com.kmem.myplayer.core_data.repositories.MusicRepository
+import com.kmem.myplayer.feature_player.domain.repository.PlayerServiceRepository
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import java.io.File
 import java.util.*
+import javax.inject.Inject
 
 /**
  * Service for playing music
  */
+
+@AndroidEntryPoint
 class PlayerService : Service() {
-
-    interface Repository {
-        var shuffle: Boolean
-
-        fun getCurrent(): Track?
-        fun getNext(): Track?
-        fun getPrevious(): Track?
-        fun setPlaylist(playlistId: Int, position: Int)
-        fun isEnded(): Boolean
-        fun savePlaylistState(playlistId: Int, uri: Uri, position: Int)
-        suspend fun getPlaylistState(context: Context, playlistId: Int): PlaylistState
-    }
 
     companion object {
         const val ACTION_PLAY_SELECTED_TRACK = "play_selected"
@@ -86,6 +79,9 @@ class PlayerService : Service() {
     private val context = this
     private var mediaSession: MediaSessionCompat? = null
 
+    @Inject
+    lateinit var repository: PlayerServiceRepository
+
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var audioFocusRequested = false
@@ -94,17 +90,13 @@ class PlayerService : Service() {
     private var extractorsFactory: ExtractorsFactory? = null
     private var dataSourceFactory: DataSource.Factory? = null
 
-    private var musicRepository: Repository = MusicRepository.getInstance()
     private var isRepositoryInitialized = false
 
     private var inactivityCheckJob: Job? = null
     private var savePlaylistStateJob: Job? = null
 
     private val _currentMetadata = MutableStateFlow<MediaMetadataCompat?>(null)
-//    private val _currentUri = MutableLiveData<Uri>()
-//
     val currentMetadata = _currentMetadata.asStateFlow()
-//    val currentUri: LiveData<Uri> = _currentUri
 
     private val _currentTrack = MutableStateFlow<Track?>(null)
     val currentTrack = _currentTrack.asStateFlow()
@@ -117,13 +109,14 @@ class PlayerService : Service() {
 
     var shuffleMode: Boolean = false
         get() {
-            return musicRepository.shuffle
+            return this.repository.shuffle
         }
         set(value) {
-            musicRepository.shuffle = value
+            this.repository.shuffle = value
             field = value
         }
 
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     @SuppressLint("WrongConstant")
     override fun onCreate() {
         super.onCreate()
@@ -191,6 +184,14 @@ class PlayerService : Service() {
         val fileDataSource = FileDataSource.Factory()
         this.dataSourceFactory = fileDataSource
         this.extractorsFactory = DefaultExtractorsFactory()
+
+        MainScope().launch {
+            repository.isInitialized.collectLatest { value ->
+                if (value) {
+                    onRepositoryInitialized()
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -206,22 +207,24 @@ class PlayerService : Service() {
     }
 
     @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
-    fun onRepositoryInitialized() {
-        MainScope().launch {
-            val track = musicRepository.getCurrent() ?: return@launch
-            if (!checkFileExistence(track.uri, showMessage = false)) return@launch
+    suspend fun onRepositoryInitialized() {
+        val track = this@PlayerService.repository.getCurrent() ?: return
+        if (!checkFileExistence(track.uri, showMessage = false)) return
 
-            if (!isRepositoryInitialized) {
-                val state = musicRepository.getPlaylistState(
+        if (!isRepositoryInitialized) {
+            val state: PlaylistState
+            withContext(Dispatchers.IO) {
+                state = this@PlayerService.repository.getPlaylistState(
                     this@PlayerService, MyApplication.getCurrentPlaylistIdFromPreferences()
                 )
-                prepareToPlay(track)
-                _currentTrack.value = track
-
-                exoPlayer?.seekTo(state.position.toLong())
-                setPlaybackState(MyApplication.getPlaybackStateFromPreferences())
-                isRepositoryInitialized = true
             }
+
+            prepareToPlay(track)
+            _currentTrack.value = track
+
+            exoPlayer?.seekTo(state.position.toLong())
+            setPlaybackState(MyApplication.getPlaybackStateFromPreferences())
+            isRepositoryInitialized = true
         }
     }
 
@@ -254,7 +257,7 @@ class PlayerService : Service() {
             if (!exoPlayer!!.playWhenReady || repeatMode) {
                 startService(Intent(baseContext, PlayerService::class.java))
 
-                val track = musicRepository.getCurrent()
+                val track = this@PlayerService.repository.getCurrent()
 
                 if (isTrackNull(track)) return
                 track as Track // remove nullability
@@ -305,7 +308,7 @@ class PlayerService : Service() {
             setPlaybackState(PlaybackStateCompat.STATE_PAUSED)
             currentState = PlaybackStateCompat.STATE_PAUSED
 
-            saveCurrentPlaylistState(musicRepository.getCurrent())
+            saveCurrentPlaylistState(this@PlayerService.repository.getCurrent())
             refreshNotificationAndForegroundStatus(currentState)
             savePlaylistStateJob?.cancel()
         }
@@ -335,7 +338,7 @@ class PlayerService : Service() {
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onSkipToNext() {
-            var track = musicRepository.getNext()
+            var track = this@PlayerService.repository.getNext()
             if (isTrackNull(track)) return
 
             while (!checkFileExistence(track!!.uri, false)) {
@@ -343,7 +346,7 @@ class PlayerService : Service() {
                     break
                 }
 
-                track = musicRepository.getNext()
+                track = this@PlayerService.repository.getNext()
             }
 
             // all tracks are deleted from memory
@@ -362,7 +365,7 @@ class PlayerService : Service() {
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onSkipToPrevious() {
-            var track = musicRepository.getPrevious()
+            var track = this@PlayerService.repository.getPrevious()
             if (isTrackNull(track)) return
 
             while (!checkFileExistence(track!!.uri, false)) {
@@ -370,7 +373,7 @@ class PlayerService : Service() {
                     break
                 }
 
-                track = musicRepository.getPrevious()
+                track = this@PlayerService.repository.getPrevious()
             }
 
             // all tracks are deleted from memory
@@ -391,14 +394,14 @@ class PlayerService : Service() {
             exoPlayer?.seekTo(pos)
 
             setPlaybackState(currentState)
-            saveCurrentPlaylistState(musicRepository.getCurrent())
+            saveCurrentPlaylistState(this@PlayerService.repository.getCurrent())
             refreshNotificationAndForegroundStatus(currentState)
         }
 
         @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
         override fun onRemoveQueueItem(description: MediaDescriptionCompat?) {
-            if (musicRepository.getCurrent()?.uri != currentTrack.value?.uri) {
-                val track = musicRepository.getCurrent()
+            if (this@PlayerService.repository.getCurrent()?.uri != currentTrack.value?.uri) {
+                val track = this@PlayerService.repository.getCurrent()
 
                 if (track == null || !checkFileExistence(track.uri)) {
                     onStop()
@@ -407,7 +410,7 @@ class PlayerService : Service() {
 
                 prepareToPlay(track)
                 setPlaybackState(currentState)
-                saveCurrentPlaylistState(musicRepository.getCurrent())
+                saveCurrentPlaylistState(this@PlayerService.repository.getCurrent())
             }
         }
 
@@ -422,17 +425,21 @@ class PlayerService : Service() {
                 startService(Intent(baseContext, PlayerService::class.java))
 
                 if (track.playlistId != MyApplication.getCurrentPlaylistIdFromPreferences()) {
-                    if (musicRepository.getCurrent() != null) {
-                        saveCurrentPlaylistState(musicRepository.getCurrent())
+                    if (this@PlayerService.repository.getCurrent() != null) {
+                        saveCurrentPlaylistState(this@PlayerService.repository.getCurrent())
                     }
-                    musicRepository.savePlaylistState(track.playlistId, track.uri, position)
+                    this@PlayerService.repository.savePlaylistState(
+                        track.playlistId,
+                        track.uri,
+                        position
+                    )
                     prepareToPlay(track)
                 } else {
                     prepareToPlay(track)
                     saveCurrentPlaylistState(track)
                 }
 
-                musicRepository.setPlaylist(track.playlistId, track.position)
+                this@PlayerService.repository.setPlaylist(track.playlistId, track.position)
 
                 if (position != 0) {
                     exoPlayer?.seekTo(position.toLong())
@@ -487,13 +494,13 @@ class PlayerService : Service() {
          */
         private fun saveCurrentPlaylistState(track: Track?) {
             if (track != null) {
-                musicRepository.savePlaylistState(
+                this@PlayerService.repository.savePlaylistState(
                     MyApplication.getCurrentPlaylistIdFromPreferences(),
                     track.uri,
                     exoPlayer!!.contentPosition.toInt()
                 )
             } else {
-                musicRepository.savePlaylistState(
+                this@PlayerService.repository.savePlaylistState(
                     MyApplication.getCurrentPlaylistIdFromPreferences(), Uri.EMPTY, 0
                 )
             }
@@ -507,7 +514,7 @@ class PlayerService : Service() {
                 savePlaylistStateJob = MainScope().launch {
                     while (true) {
                         try {
-                            saveCurrentPlaylistState(musicRepository.getCurrent()!!)
+                            saveCurrentPlaylistState(this@PlayerService.repository.getCurrent()!!)
                             delay(UPDATE_STATE_INTERVAL)
                         } catch (e: Exception) {
                             // musicRepository is not ready
@@ -624,7 +631,7 @@ class PlayerService : Service() {
                 if (repeatMode) {
                     mediaSessionCallback.onPlay()
                 } else {
-                    val isEnded = musicRepository.isEnded()
+                    val isEnded = this@PlayerService.repository.isEnded()
                     mediaSessionCallback.onSkipToNext()
                     if (isEnded)
                         mediaSessionCallback.onPause()
@@ -678,7 +685,6 @@ class PlayerService : Service() {
                 }
             }
             else -> {
-                Log.d("Notification", "Closing notification")
                 stopForeground(true)
                 //NotificationManagerCompat.from(baseContext).cancel(NOTIFICATION_ID)
             }
@@ -690,7 +696,6 @@ class PlayerService : Service() {
      * @return Notification with current player state
      */
     private fun getNotification(playbackState: Int): Notification {
-        Log.d("state", playbackState.toString())
         val builder = MediaStyleHelper.from(baseContext, mediaSession!!)
         builder.addAction(
             NotificationCompat.Action(

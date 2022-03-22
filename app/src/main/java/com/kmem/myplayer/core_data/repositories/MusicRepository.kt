@@ -2,7 +2,6 @@ package com.kmem.myplayer.core_data.repositories
 
 import android.content.Context
 import android.net.Uri
-import androidx.lifecycle.MutableLiveData
 import com.kmem.myplayer.MyApplication
 import com.kmem.myplayer.core.domain.model.PlaylistState
 import com.kmem.myplayer.core.domain.model.Track
@@ -13,16 +12,16 @@ import com.kmem.myplayer.core_data.db.entities.TrackEntity
 import com.kmem.myplayer.core_data.db.entities.toTrack
 import com.kmem.myplayer.core_utils.MetadataHelper
 import com.kmem.myplayer.feature_player.domain.repository.PlayerControllerRepository
-import com.kmem.myplayer.feature_player.presentation.fragments.PlayerControllerFragment
-import com.kmem.myplayer.feature_player.service.PlayerService
+import com.kmem.myplayer.feature_player.domain.repository.PlayerServiceRepository
 import com.kmem.myplayer.feature_playlist.domain.repository.FileChooserRepository
 import com.kmem.myplayer.feature_playlist.domain.repository.PlaylistRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import java.io.File
 
-class MusicRepository : PlayerService.Repository,
+class MusicRepository : PlayerServiceRepository,
     PlaylistRepository,
     FileChooserRepository,
     NavRepository,
@@ -38,7 +37,7 @@ class MusicRepository : PlayerService.Repository,
 
     private var currentPlaylistRepository: CurrentPlaylistRepository = CurrentPlaylistRepository()
 
-    override val isInitialized = MutableLiveData<Boolean>(false)
+    override val isInitialized = MutableStateFlow<Boolean>(false)
 
     override var shuffle: Boolean = MyApplication.getShuffleModeFromPreferences()
         set(value) {
@@ -127,11 +126,6 @@ class MusicRepository : PlayerService.Repository,
     override fun updatePositions(context: Context, tracks: List<Track>) {
         MainScope().launch {
             withContext(Dispatchers.IO) {
-//                for (track in tracksCopy) {
-//                    track as Track // type cast
-//                    AppDatabase.getInstance(context).trackDao()
-//                        .updatePositionOfTrack(track.uri, track.playlistId, track.position)
-//                }
                 AppDatabase.getInstance(context).trackDao()
                     .updatePositionsOfTracksTransaction(tracks.map { TrackEntity.fromTrack(it) })
             }

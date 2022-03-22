@@ -64,11 +64,12 @@ class FileChooserViewModel @Inject constructor(private val repository: FileChoos
         _currentDirName.value = ""
 
         // first invoke
-        if (currentTree == null)
+        if (currentTree == null) {
             currentTree = DirectoryNode(null, null).apply {
                 this.childModels.addAll(result)
                 this.initialize()
             }
+        }
 
         while (currentTree?.parent != null)
             currentTree = currentTree?.parent
@@ -130,6 +131,7 @@ class FileChooserViewModel @Inject constructor(private val repository: FileChoos
             currentTree?.childrenList()!!.forEach { it.changeSelected(true) }
         }
 
+        _currentDirs.value = ArrayList<FileTreeComponent>()
         _currentDirs.value = currentTree?.childrenList()!!
     }
 
@@ -174,17 +176,19 @@ class FileChooserViewModel @Inject constructor(private val repository: FileChoos
     private suspend fun loadAllFiles(tree: FileTreeComponent?) {
         withContext(Dispatchers.IO) {
             for (child in tree?.childrenList()!!) {
-                if (child.isDirectory)
+                if (child.isDirectory) {
                     loadAllFiles(child)
-                else
+                } else {
                     pathsToUpload.add(child.model?.file?.absolutePath!!)
+                }
             }
         }
     }
 
     fun loadFilesToRepository(context: Context, playlistId: Int) {
         MainScope().launch {
-            repository?.addTracks(context, loadFiles(), playlistId)
+            val files = loadFiles()
+            repository?.addTracks(context, files, playlistId)
         }
     }
 }

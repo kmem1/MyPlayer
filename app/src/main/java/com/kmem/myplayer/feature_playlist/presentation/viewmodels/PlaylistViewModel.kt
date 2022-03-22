@@ -2,22 +2,32 @@ package com.kmem.myplayer.feature_playlist.presentation.viewmodels
 
 import android.content.Context
 import android.net.Uri
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kmem.myplayer.R
 import com.kmem.myplayer.core.domain.model.PlaylistState
 import com.kmem.myplayer.core.domain.model.Track
+import com.kmem.myplayer.core_utils.SingleLiveEvent
+import com.kmem.myplayer.core_utils.extensions.toNavResult
+import com.kmem.myplayer.core_utils.extensions.toToastResult
+import com.kmem.myplayer.core_utils.ui.base.BaseBindingViewModel
 import com.kmem.myplayer.feature_playlist.domain.repository.PlaylistRepository
+import com.kmem.myplayer.feature_playlist.presentation.fragments.PlaylistFragmentDirections
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class PlaylistViewModel @Inject constructor(
-        private val repository: PlaylistRepository,
-        private val state: SavedStateHandle
-) : ViewModel() {
+    private val repository: PlaylistRepository,
+    state: SavedStateHandle
+) : BaseBindingViewModel() {
 
     val playlistId = state.get<Int>("playlist_id")
 
@@ -25,6 +35,9 @@ class PlaylistViewModel @Inject constructor(
 
     private val _tracks = MutableStateFlow<List<Track>>(emptyList())
     private val tracks = _tracks.asStateFlow()
+
+    private val _deleteMode = MutableStateFlow(false)
+    val deleteMode = _deleteMode.asStateFlow()
 
     fun getTracks(context: Context): StateFlow<List<Track>> {
         if (!isCollectingData && playlistId != null) {
@@ -38,10 +51,14 @@ class PlaylistViewModel @Inject constructor(
         return tracks
     }
 
-    fun deleteTracks(context: Context, tracks: List<Track>, onComplete: () -> Unit) {
+    fun deleteTracks(context: Context, trackPositionList: List<Int>, onComplete: () -> Unit) {
         viewModelScope.launch {
             if (playlistId != null) {
-                repository.deleteTracks(context, tracks, playlistId)
+                _deleteMode.value = false
+
+                val trackList = trackPositionList.map { getTrackAtPosition(it) }
+                repository.deleteTracks(context, trackList, playlistId)
+
                 onComplete()
             }
         }
@@ -79,5 +96,19 @@ class PlaylistViewModel @Inject constructor(
         }
 
         return name
+    }
+
+    fun openFileChooser() {
+        playlistId?.let {
+            navLiveData.value = PlaylistFragmentDirections.toFilechooser(playlistId).toNavResult()
+        }
+    }
+
+    fun toggleDeleteMode() {
+        _deleteMode.value = !deleteMode.value
+    }
+
+    fun onPermissionDenied() {
+        toastLiveData.value = R.string.on_permission_denied.toToastResult()
     }
 }

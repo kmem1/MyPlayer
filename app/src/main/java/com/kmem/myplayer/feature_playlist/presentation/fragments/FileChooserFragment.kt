@@ -45,8 +45,8 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
     private val args: FileChooserFragmentArgs by navArgs()
 
     override fun onCreateView(
-            inflater: LayoutInflater, container: ViewGroup?,
-            savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentFileChooserBinding.inflate(inflater, container, false)
 
@@ -82,12 +82,16 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
     }
 
     private fun collectDataFromViewModel() {
-        lifecycleScope.launchWhenCreated {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.currentDirs.collectLatest { value ->
                     adapter?.setData(value)
                 }
+            }
+        }
 
+        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.currentDirName.collect { value ->
                     if (value == "") {
                         binding.dirNameTv.text = resources.getString(R.string.home_screen)
@@ -95,7 +99,11 @@ class FileChooserFragment : Fragment(), FileChooserAdapter.Listener {
                         binding.dirNameTv.text = value
                     }
                 }
+            }
+        }
 
+        viewLifecycleOwner.lifecycleScope.launchWhenCreated {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.currentPath.collect { value ->
                     binding.dirPathTv.text = value
                 }

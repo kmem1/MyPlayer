@@ -48,7 +48,6 @@ class PlaylistItemTouchHelperCallback(private val adapter : ItemTouchHelperAdapt
     }
 
     private fun onItemDrop(from: Int, to: Int) {
-        Log.d("adapter", "DropItem")
         adapter.updatePositions(from, to)
     }
 

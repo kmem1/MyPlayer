@@ -2,7 +2,6 @@ package com.kmem.myplayer.feature_playlist.presentation.adapters
 
 import android.annotation.SuppressLint
 import android.net.Uri
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -25,7 +24,6 @@ class PlaylistAdapter(
 
     interface Listener {
         var currentUri: Uri
-        var deleteMode: Boolean
         var selectedCheckboxesPositions: ArrayList<Int>
 
         fun onAudioClick(position: Int)
@@ -36,6 +34,12 @@ class PlaylistAdapter(
 
     override fun getItemCount(): Int = tracks.size
 
+    var deleteMode: Boolean = false
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
         val view = inflater.inflate(R.layout.audio_list_item, parent, false)
@@ -45,20 +49,22 @@ class PlaylistAdapter(
 
     @SuppressLint("SetTextI18n")
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(tracks[position], position, listener)
+        holder.bind(tracks[position], position, deleteMode, listener)
     }
 
     class ViewHolder(private val binding: AudioListItemBinding) :
         RecyclerView.ViewHolder(binding.root) {
         @SuppressLint("SetTextI18n")
-        fun bind(item: Track, position: Int, listener: Listener?) {
+        fun bind(item: Track, position: Int, deleteMode: Boolean, listener: Listener?) {
             val positionString = (position + 1).toString() + "."
             binding.positionTv.text = positionString
+
             if (item.title == Track.UNKNOWN || item.artist == Track.UNKNOWN) {
                 binding.titleTv.text = item.title
             } else {
                 binding.titleTv.text = "${item.artist} - ${item.title}"
             }
+
             val mins = item.duration / 1000 / 60
             val secs = item.duration / 1000 % 60
             val duration =
@@ -75,10 +81,12 @@ class PlaylistAdapter(
                         positions.add(position)
                     }
                 }
-                if (listener.deleteMode)
+
+                if (deleteMode) {
                     binding.deleteCheckbox.visibility = View.VISIBLE
-                else
+                } else {
                     binding.deleteCheckbox.visibility = View.GONE
+                }
 
                 binding.root.setOnClickListener { listener.onAudioClick(position) }
                 binding.root.isSelected = item.uri == listener.currentUri
@@ -100,7 +108,6 @@ class PlaylistAdapter(
                 Collections.swap(tracks, i, i + 1)
             }
         }
-        Log.d("adapter", "MoveItem")
 
         notifyItemMoved(fromPosition, toPosition)
         return true

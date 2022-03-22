@@ -178,5 +178,4 @@ class MyApplication : Application() {
 
         currentInstance = this
     }
-
 }

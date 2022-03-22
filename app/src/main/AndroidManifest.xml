@@ -37,7 +37,6 @@
         <activity
             android:name="com.kmem.myplayer.core.presentation.MainActivity"
             android:launchMode="singleTask"
-            android:screenOrientation="portrait"
             android:theme="@style/Theme.MyPlayer"
             android:exported="true">
             <intent-filter>
